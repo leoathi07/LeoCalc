@@ -64,29 +64,32 @@ document.addEventListener("DOMContentLoaded", () => {
 function startSplash() {
 
     const splash = document.getElementById("splashScreen");
-    const main = document.getElementById("mainApp");
-    const progress = document.getElementById("progressBar");
+    const progress = document.getElementById("loadingProgress");
     const percent = document.getElementById("loadingPercent");
-    const text = document.getElementById("loadingText");
+    const mainApp = document.getElementById("mainApp");
 
-    if (!splash || !main) return;
+    if (!splash) {
+        if (mainApp) {
+            mainApp.classList.remove("hidden");
+        }
+        return;
+    }
 
     let value = 0;
 
-    const messages = [
-        "Initializing LeoCalc...",
-        "Loading Engineering Engine...",
-        "Loading Scientific Functions...",
-        "Preparing Smart Tools...",
-        "Connecting Weather...",
-        "Almost Ready..."
-    ];
+    splash.classList.remove("hide");
+
+    if (mainApp) {
+        mainApp.classList.add("hidden");
+    }
 
     const timer = setInterval(() => {
 
-        value += Math.floor(Math.random() * 5) + 2;
+        value += 2;
 
-        if (value > 100) value = 100;
+        if (value > 100) {
+            value = 100;
+        }
 
         if (progress) {
             progress.style.width = value + "%";
@@ -96,33 +99,34 @@ function startSplash() {
             percent.textContent = value + "%";
         }
 
-        if (text) {
-
-            const index = Math.min(
-                messages.length - 1,
-                Math.floor(value / 18)
-            );
-
-            text.textContent = messages[index];
-        }
-
         if (value >= 100) {
 
             clearInterval(timer);
 
             setTimeout(() => {
 
-                splash.style.opacity = "0";
-                splash.style.visibility = "hidden";
-                main.classList.remove("hidden");
+                /* Show main app FIRST */
+                if (mainApp) {
+                    mainApp.classList.remove("hidden");
+                    mainApp.style.display = "block";
+                    mainApp.style.filter = "none";
+                    mainApp.style.opacity = "1";
+                }
 
-            }, 450);
+                /* Then remove splash */
+                splash.classList.add("hide");
+
+                document.body.style.overflow = "";
+
+                /* Remove any accidental blur */
+                document.body.style.filter = "none";
+                document.documentElement.style.filter = "none";
+
+            }, 350);
         }
 
-    }, 80);
-}
-
-
+    }, 40);
+               }
 /* =========================================================
    MAIN CLOCK
 ========================================================= */
