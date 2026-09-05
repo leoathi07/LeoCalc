@@ -2662,3 +2662,504 @@ textarea:focus-visible {
     }
 
 }
+/* =========================================================
+   LEO CALC PREMIUM SPLASH
+   ========================================================= */
+
+.splashScreen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+    z-index: 99999;
+
+    background:
+        radial-gradient(
+            circle at 50% 40%,
+            rgba(255, 190, 40, 0.12),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 50% 80%,
+            rgba(70, 80, 255, 0.08),
+            transparent 35%
+        ),
+        #03050b;
+
+    transition:
+        opacity 0.8s ease,
+        visibility 0.8s ease;
+}
+
+
+/* HIDE */
+
+.splashScreen.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+
+/* BACKGROUND GLOW */
+
+.splashGlow {
+    position: absolute;
+
+    width: 420px;
+    height: 420px;
+
+    border-radius: 50%;
+
+    background: rgba(255, 190, 45, 0.12);
+
+    filter: blur(100px);
+
+    animation: splashGlowPulse 3s ease-in-out infinite;
+}
+
+
+@keyframes splashGlowPulse {
+
+    0%,
+    100% {
+        transform: scale(0.85);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+}
+
+
+/* CONTENT */
+
+.splashContent {
+    position: relative;
+    z-index: 2;
+
+    width: min(92%, 430px);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    text-align: center;
+}
+
+
+/* LOGO */
+
+.logoWrapper {
+    position: relative;
+
+    width: min(72vw, 310px);
+    aspect-ratio: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    animation: logoEnter 1.2s cubic-bezier(.2,.8,.2,1);
+}
+
+
+.leoCalcLogo {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    z-index: 3;
+
+    filter:
+        drop-shadow(0 0 18px rgba(255, 190, 50, 0.35))
+        drop-shadow(0 0 45px rgba(255, 180, 30, 0.12));
+
+    animation:
+        logoFloat 4s ease-in-out infinite,
+        logoGlow 2.5s ease-in-out infinite;
+}
+
+
+@keyframes logoEnter {
+
+    0% {
+        transform: scale(0.55) rotate(-8deg);
+        opacity: 0;
+    }
+
+    70% {
+        transform: scale(1.05) rotate(2deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+
+@keyframes logoFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-7px);
+    }
+}
+
+
+@keyframes logoGlow {
+
+    0%,
+    100% {
+        filter:
+            drop-shadow(0 0 15px rgba(255, 190, 50, 0.3));
+    }
+
+    50% {
+        filter:
+            drop-shadow(0 0 30px rgba(255, 205, 70, 0.65))
+            drop-shadow(0 0 60px rgba(255, 180, 30, 0.18));
+    }
+}
+
+
+/* ROTATING RING */
+
+.logoRing {
+    position: absolute;
+
+    width: 92%;
+    height: 92%;
+
+    border-radius: 50%;
+
+    border:
+        1px solid rgba(255, 205, 70, 0.18);
+
+    border-top-color: rgba(255, 210, 80, 0.85);
+
+    animation: ringRotate 7s linear infinite;
+}
+
+
+@keyframes ringRotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* BRAND */
+
+.splashBrand {
+    margin-top: 8px;
+
+    animation: brandEnter 1s ease 0.35s both;
+}
+
+
+.splashBrand h1 {
+    margin: 0;
+
+    font-size: clamp(42px, 12vw, 62px);
+
+    font-weight: 900;
+
+    letter-spacing: -2px;
+
+    line-height: 1;
+}
+
+
+.splashBrand h1 span {
+    background:
+        linear-gradient(
+            135deg,
+            #fff1a8,
+            #ffc83d,
+            #d89400
+        );
+
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+}
+
+
+.splashBrand h1 {
+    color: #f7f7f7;
+}
+
+
+@keyframes brandEnter {
+
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* BRAND LINE */
+
+.brandLine {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    margin-top: 12px;
+}
+
+
+.brandLine span {
+    width: 35px;
+    height: 1px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            #e8ad32
+        );
+}
+
+
+.brandLine span:last-child {
+    background:
+        linear-gradient(
+            90deg,
+            #e8ad32,
+            transparent
+        );
+}
+
+
+.brandLine p {
+    margin: 0;
+
+    color: rgba(230, 235, 245, 0.75);
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 3px;
+
+    white-space: nowrap;
+}
+
+
+/* ENGINEERING ICONS */
+
+.engineeringIcons {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 25px;
+
+    margin-top: 30px;
+
+    color: #dca72d;
+
+    font-size: 20px;
+
+    opacity: 0.8;
+}
+
+
+.engineeringIcons span {
+    display: inline-flex;
+
+    animation:
+        iconFloat 2.5s ease-in-out infinite;
+}
+
+
+.engineeringIcons span:nth-child(2) {
+    animation-delay: .2s;
+}
+
+.engineeringIcons span:nth-child(3) {
+    animation-delay: .4s;
+}
+
+.engineeringIcons span:nth-child(4) {
+    animation-delay: .6s;
+}
+
+.engineeringIcons span:nth-child(5) {
+    animation-delay: .8s;
+}
+
+
+@keyframes iconFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+
+/* LOADING */
+
+.loadingArea {
+    width: min(82vw, 330px);
+
+    margin-top: 32px;
+}
+
+
+#loadingText {
+    margin-bottom: 12px;
+
+    color: #e8b536;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    letter-spacing: 5px;
+}
+
+
+.loadingBar {
+    position: relative;
+
+    width: 100%;
+    height: 8px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(255,255,255,0.1);
+
+    box-shadow:
+        inset 0 0 10px rgba(0,0,0,.5);
+}
+
+
+#loadingProgress {
+    width: 0%;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #9b6200,
+            #ffd95a,
+            #fff1a3
+        );
+
+    box-shadow:
+        0 0 12px rgba(255, 200, 50, .7);
+
+    transition: width .12s linear;
+}
+
+
+#loadingPercent {
+    margin-top: 8px;
+
+    color: rgba(255,255,255,.45);
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 1px;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 480px) {
+
+    .logoWrapper {
+        width: min(76vw, 290px);
+    }
+
+    .engineeringIcons {
+        gap: 19px;
+        margin-top: 24px;
+    }
+
+    .brandLine {
+        gap: 8px;
+    }
+
+    .brandLine span {
+        width: 22px;
+    }
+
+    .brandLine p {
+        font-size: 8px;
+        letter-spacing: 2px;
+    }
+
+    .loadingArea {
+        margin-top: 26px;
+    }
+}
+
+
+/* SMALL HEIGHT PHONES */
+
+@media (max-height: 700px) {
+
+    .logoWrapper {
+        width: 210px;
+    }
+
+    .splashBrand h1 {
+        font-size: 42px;
+    }
+
+    .engineeringIcons {
+        margin-top: 16px;
+    }
+
+    .loadingArea {
+        margin-top: 18px;
+    }
+   }
