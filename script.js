@@ -1,283 +1,85 @@
 /* =========================================================
-   LEO CALC — COMPLETE JAVASCRIPT
+   LEO CALC — COMPLETE SCRIPT.JS
+   Premium Engineering Calculator
    ========================================================= */
 
 "use strict";
-
 
 /* =========================================================
    GLOBAL STATE
    ========================================================= */
 
 let expression = "";
-let answer = 0;
-let angleModeValue = "DEG";
-
-let history =
-    JSON.parse(localStorage.getItem("leoCalcHistory") || "[]");
-
-let notes =
-    JSON.parse(localStorage.getItem("leoCalcNotes") || "[]");
-
-let favorites =
-    JSON.parse(localStorage.getItem("leoCalcFavorites") || "[]");
+let history = JSON.parse(localStorage.getItem("leoCalcHistory") || "[]");
+let favorites = JSON.parse(localStorage.getItem("leoCalcFavorites") || "[]");
 
 let stopwatchInterval = null;
-let stopwatchSeconds = 0;
-
-let clockInterval = null;
+let stopwatchStart = 0;
+let stopwatchElapsed = 0;
+let stopwatchRunning = false;
 
 
 /* =========================================================
-   INITIALIZE
+   DOM HELPERS
    ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+const $ = (id) => document.getElementById(id);
 
-    loadLogo();
+const splashScreen = $("splashScreen");
+const app = $("app");
 
-    startSplash();
+const expressionDisplay = $("expressionDisplay");
+const resultDisplay = $("resultDisplay");
 
-    startClock();
+const toolModal = $("toolModal");
+const modalTitle = $("modalTitle");
+const modalSubtitle = $("modalSubtitle");
+const modalBody = $("modalBody");
+
+const sideMenu = $("sideMenu");
+const menuOverlay = $("menuOverlay");
+
+
+/* =========================================================
+   SPLASH SCREEN
+   ========================================================= */
+
+window.addEventListener("load", () => {
+
+    setTimeout(() => {
+
+        if (splashScreen) {
+            splashScreen.classList.add("hidden");
+        }
+
+        if (app) {
+            app.classList.remove("hidden");
+        }
+
+    }, 2200);
 
     renderHistory();
-
     renderFavorites();
-
-    document.addEventListener("keydown", handleKeyboard);
+    loadSettings();
 
 });
 
 
 /* =========================================================
-   LOGO UPLOAD
+   HAPTIC
    ========================================================= */
 
-const logoUpload =
-    document.getElementById("logoUpload");
+function haptic() {
 
-if (logoUpload) {
+    const enabled =
+        localStorage.getItem("leoCalcHaptic") !== "false";
 
-    logoUpload.addEventListener("change", function () {
-
-        const file = this.files[0];
-
-        if (!file) return;
-
-        if (!file.type.startsWith("image/")) {
-
-            alert("Please select an image file.");
-
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onload = function (event) {
-
-            const imageData = event.target.result;
-
-            localStorage.setItem(
-                "leoCalcLogo",
-                imageData
-            );
-
-            applyLogo(imageData);
-
-        };
-
-        reader.readAsDataURL(file);
-
-    });
-}
-
-
-/* =========================================================
-   LOAD LOGO
-   ========================================================= */
-
-function loadLogo() {
-
-    const savedLogo =
-        localStorage.getItem("leoCalcLogo");
-
-    if (savedLogo) {
-
-        applyLogo(savedLogo);
-
+    if (
+        enabled &&
+        navigator.vibrate
+    ) {
+        navigator.vibrate(8);
     }
-}
-
-
-function applyLogo(src) {
-
-    const ids = [
-        "splashLogo",
-        "headerLogo",
-        "menuLogo"
-    ];
-
-    ids.forEach(id => {
-
-        const img =
-            document.getElementById(id);
-
-        if (img) {
-
-            img.src = src;
-
-            img.style.display = "block";
-        }
-
-    });
-
-
-    const placeholders = [
-        "logoPlaceholder",
-        "headerLC",
-        "menuLC"
-    ];
-
-    placeholders.forEach(id => {
-
-        const el =
-            document.getElementById(id);
-
-        if (el) {
-            el.style.display = "none";
-        }
-
-    });
-
-}
-
-
-/* =========================================================
-   SPLASH
-   ========================================================= */
-
-function startSplash() {
-
-    const splash =
-        document.getElementById("splashScreen");
-
-    const progress =
-        document.getElementById("loadingProgress");
-
-    const percent =
-        document.getElementById("loadingPercent");
-
-    const text =
-        document.getElementById("loadingText");
-
-    const main =
-        document.getElementById("mainApp");
-
-    if (!splash) return;
-
-    let value = 0;
-
-    const messages = [
-        "INITIALIZING...",
-        "LOADING ENGINE...",
-        "PREPARING TOOLS...",
-        "LOADING CALCULATOR...",
-        "FINALIZING..."
-    ];
-
-    const timer =
-        setInterval(() => {
-
-            value += 2;
-
-            if (value > 100) {
-                value = 100;
-            }
-
-            if (progress) {
-                progress.style.width =
-                    value + "%";
-            }
-
-            if (percent) {
-                percent.textContent =
-                    value + "%";
-            }
-
-            if (text) {
-
-                const index =
-                    Math.min(
-                        Math.floor(value / 20),
-                        messages.length - 1
-                    );
-
-                text.textContent =
-                    messages[index];
-            }
-
-            if (value >= 100) {
-
-                clearInterval(timer);
-
-                setTimeout(() => {
-
-                    splash.classList.add("hide");
-
-                    if (main) {
-                        main.classList.remove("hidden");
-                    }
-
-                }, 500);
-            }
-
-        }, 35);
-}
-
-
-/* =========================================================
-   CLOCK
-   ========================================================= */
-
-function startClock() {
-
-    updateClock();
-
-    if (clockInterval) {
-        clearInterval(clockInterval);
-    }
-
-    clockInterval =
-        setInterval(updateClock, 1000);
-}
-
-function updateClock() {
-
-    const now = new Date();
-
-    const time =
-        now.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        });
-
-    const date =
-        now.toLocaleDateString([], {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric"
-        });
-
-    const clock =
-        document.getElementById("liveClock");
-
-    const dateEl =
-        document.getElementById("liveDate");
-
-    if (clock) clock.textContent = time;
-    if (dateEl) dateEl.textContent = date;
 }
 
 
@@ -285,395 +87,377 @@ function updateClock() {
    PAGE NAVIGATION
    ========================================================= */
 
-function hidePages() {
+function showPage(pageName) {
 
-    document
-        .querySelectorAll(".page")
-        .forEach(page => {
-            page.classList.add("hidden");
-        });
-}
+    document.querySelectorAll(".page").forEach(page => {
+        page.classList.remove("active");
+    });
 
+    const page = $(`${pageName}Page`);
 
-function showHome() {
-
-    hidePages();
-
-    document
-        .getElementById("homePage")
-        ?.classList.remove("hidden");
-
-    closeToolModal();
-
-    updateBottomNav(0);
-
-    window.scrollTo(0,0);
-}
-
-
-function openCalculator() {
-
-    hidePages();
-
-    document
-        .getElementById("calculatorPage")
-        ?.classList.remove("hidden");
-
-    updateBottomNav(1);
-
-    window.scrollTo(0,0);
-
-    updateCalculatorDisplay();
-}
-
-
-function showFavorites() {
-
-    hidePages();
-
-    document
-        .getElementById("favoritesPage")
-        ?.classList.remove("hidden");
-
-    renderFavorites();
-
-    updateBottomNav(2);
-}
-
-
-function updateBottomNav(index) {
-
-    document
-        .querySelectorAll(".bottomNav button")
-        .forEach((button, i) => {
-
-            button.classList.toggle(
-                "active",
-                i === index
-            );
-
-        });
-}
-
-
-/* =========================================================
-   CALCULATOR
-   ========================================================= */
-
-function calcInput(value) {
-
-    expression += value;
-
-    updateCalculatorDisplay();
-}
-
-
-function calcFunction(value) {
-
-    if (value === "^2") {
-
-        expression += "^2";
-
-    } else if (value === "^3") {
-
-        expression += "^3";
-
-    } else if (value === "!") {
-
-        expression += "!";
-
-    } else {
-
-        expression += value;
-
+    if (page) {
+        page.classList.add("active");
     }
 
-    updateCalculatorDisplay();
-}
+    document.querySelectorAll(".bottom-item").forEach(item => {
+        item.classList.remove("active");
 
-
-function insertConstant(value) {
-
-    if (value === "pi") {
-
-        expression += "π";
-
-    } else {
-
-        expression += "e";
-
-    }
-
-    updateCalculatorDisplay();
-}
-
-
-function clearCalc() {
-
-    expression = "";
-
-    updateCalculatorDisplay();
-
-    const result =
-        document.getElementById("calcResult");
-
-    if (result) {
-        result.textContent = "0";
-    }
-}
-
-
-function deleteCalc() {
-
-    expression =
-        expression.slice(0,-1);
-
-    updateCalculatorDisplay();
-}
-
-
-function toggleSign() {
-
-    if (!expression) {
-
-        expression = "-";
-
-    } else {
-
-        expression =
-            expression.startsWith("-")
-                ? expression.slice(1)
-                : "-" + expression;
-    }
-
-    updateCalculatorDisplay();
-}
-
-
-function insertRandom() {
-
-    expression +=
-        Math.random().toFixed(6);
-
-    updateCalculatorDisplay();
-}
-
-
-function updateCalculatorDisplay() {
-
-    const exp =
-        document.getElementById("calcExpression");
-
-    if (exp) {
-        exp.textContent =
-            expression || "0";
-    }
-
-    const ans =
-        document.getElementById("answerValue");
-
-    if (ans) {
-        ans.textContent =
-            formatNumber(answer);
-    }
-}
-
-
-/* =========================================================
-   ANGLE MODE
-   ========================================================= */
-
-document.addEventListener("click", event => {
-
-    if (event.target.id === "angleMode") {
-
-        if (angleModeValue === "DEG") {
-            angleModeValue = "RAD";
-        } else if (angleModeValue === "RAD") {
-            angleModeValue = "GRAD";
-        } else {
-            angleModeValue = "DEG";
+        if (item.dataset.page === pageName) {
+            item.classList.add("active");
         }
+    });
 
-        event.target.textContent =
-            angleModeValue;
+    closeMenu();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+    if (pageName === "history") {
+        renderHistory();
+    }
+
+    if (pageName === "favorites") {
+        renderFavorites();
+    }
+}
+
+
+/* =========================================================
+   MENU
+   ========================================================= */
+
+function openMenu() {
+
+    sideMenu?.classList.add("open");
+    menuOverlay?.classList.remove("hidden");
+
+}
+
+function closeMenu() {
+
+    sideMenu?.classList.remove("open");
+    menuOverlay?.classList.add("hidden");
+
+}
+
+$("menuBtn")?.addEventListener("click", () => {
+
+    haptic();
+    openMenu();
+
+});
+
+$("closeMenuBtn")?.addEventListener("click", () => {
+
+    haptic();
+    closeMenu();
+
+});
+
+menuOverlay?.addEventListener("click", closeMenu);
+
+
+/* =========================================================
+   PAGE BUTTONS
+   ========================================================= */
+
+document.addEventListener("click", (event) => {
+
+    const pageButton =
+        event.target.closest("[data-page]");
+
+    if (!pageButton) return;
+
+    const page =
+        pageButton.dataset.page;
+
+    if (page) {
+        haptic();
+        showPage(page);
     }
 
 });
 
 
 /* =========================================================
-   CALCULATOR EVALUATION
+   OPEN CALCULATOR
    ========================================================= */
 
-function calculateResult() {
+$("openCalculatorBtn")?.addEventListener(
+    "click",
+    () => {
+
+        haptic();
+        showPage("calculator");
+
+    }
+);
+
+
+/* =========================================================
+   TABS
+   ========================================================= */
+
+document.querySelectorAll(".tab").forEach(tab => {
+
+    tab.addEventListener("click", () => {
+
+        haptic();
+
+        const target =
+            tab.dataset.tab;
+
+        document.querySelectorAll(".tab").forEach(t => {
+            t.classList.remove("active");
+        });
+
+        tab.classList.add("active");
+
+        document.querySelectorAll(".tab-content").forEach(content => {
+            content.classList.remove("active");
+        });
+
+        const targetSection =
+            $(`${target}Tab`);
+
+        if (targetSection) {
+            targetSection.classList.add("active");
+        }
+
+    });
+
+});
+
+
+/* =========================================================
+   SCIENTIFIC CALCULATOR
+   ========================================================= */
+
+document.addEventListener("click", (event) => {
+
+    const button =
+        event.target.closest(
+            ".calc-buttons button, .scientific-extra button"
+        );
+
+    if (!button) return;
+
+    haptic();
+
+    const value =
+        button.dataset.value;
+
+    const action =
+        button.dataset.action;
+
+    if (value !== undefined) {
+
+        addToExpression(value);
+        return;
+
+    }
+
+    if (action === "clear") {
+
+        clearCalculator();
+        return;
+
+    }
+
+    if (action === "delete") {
+
+        deleteLast();
+        return;
+
+    }
+
+    if (action === "calculate") {
+
+        calculate();
+        return;
+
+    }
+
+});
+
+
+function addToExpression(value) {
+
+    if (
+        value === "π"
+    ) {
+        expression += "PI";
+    }
+
+    else {
+        expression += value;
+    }
+
+    updateDisplay();
+
+}
+
+
+function updateDisplay() {
+
+    if (expressionDisplay) {
+        expressionDisplay.textContent =
+            expression || "";
+    }
+
+    if (
+        resultDisplay &&
+        expression === ""
+    ) {
+        resultDisplay.textContent = "0";
+    }
+
+}
+
+
+function clearCalculator() {
+
+    expression = "";
+
+    if (expressionDisplay) {
+        expressionDisplay.textContent = "";
+    }
+
+    if (resultDisplay) {
+        resultDisplay.textContent = "0";
+    }
+
+}
+
+
+function deleteLast() {
+
+    if (!expression) return;
+
+    expression =
+        expression.slice(0, -1);
+
+    updateDisplay();
+
+}
+
+
+/* =========================================================
+   SAFE CALCULATOR ENGINE
+   ========================================================= */
+
+function calculate() {
 
     if (!expression) return;
 
     try {
 
-        const result =
-            evaluateExpression(expression);
+        const original =
+            expression;
 
-        if (!Number.isFinite(result)) {
-            throw new Error("Invalid result");
-        }
-
-        answer = result;
-
-        const resultEl =
-            document.getElementById("calcResult");
-
-        if (resultEl) {
-
-            resultEl.textContent =
-                formatNumber(result);
-        }
-
-        addHistory(
-            expression,
-            result
-        );
-
-        expression =
-            String(
-                Number(
-                    result.toPrecision(14)
-                )
-            );
-
-        updateCalculatorDisplay();
-
-    } catch (error) {
-
-        const resultEl =
-            document.getElementById("calcResult");
-
-        if (resultEl) {
-            resultEl.textContent = "Error";
-        }
-    }
-}
-
-
-function evaluateExpression(input) {
-
-    let exp = input;
-
-    exp =
-        exp
-            .replaceAll("×","*")
-            .replaceAll("÷","/")
-            .replaceAll("−","-")
-            .replaceAll("π","Math.PI")
-            .replace(/\bAns\b/g,"answer");
-
-    exp =
-        exp.replace(/\^/g,"**");
-
-    exp =
-        exp.replace(/\be\b/g,"Math.E");
-
-    /* percentage */
-
-    exp =
-        exp.replace(
-            /(\d+(?:\.\d+)?)%/g,
-            "($1/100)"
-        );
-
-    /* factorial */
-
-    exp =
-        replaceFactorials(exp);
-
-    /* functions */
-
-    exp =
-        exp.replace(
-            /sqrt\(/g,
-            "Math.sqrt("
-        );
-
-    exp =
-        exp.replace(
-            /log\(/g,
-            "Math.log10("
-        );
-
-    exp =
-        exp.replace(
-            /ln\(/g,
-            "Math.log("
-        );
-
-    exp =
-        exp.replace(
-            /sin\(/g,
-            "trigSin("
-        );
-
-    exp =
-        exp.replace(
-            /cos\(/g,
-            "trigCos("
-        );
-
-    exp =
-        exp.replace(
-            /tan\(/g,
-            "trigTan("
-        );
-
-
-    /* safe characters */
-
-    if (
-        !/^[0-9+\-*/().,\sA-Za-z_]+$/.test(exp)
-    ) {
-
-        throw new Error("Invalid expression");
-    }
-
-
-    const fn =
-        new Function(
-            "answer",
-            "trigSin",
-            "trigCos",
-            "trigTan",
-            `"use strict"; return (${exp});`
-        );
-
-    return fn(
-        answer,
-        trigSin,
-        trigCos,
-        trigTan
-    );
-}
-
-
-function replaceFactorials(exp) {
-
-    const regex =
-        /(\d+(?:\.\d+)?)!/;
-
-    while (regex.test(exp)) {
+        let exp =
+            expression
+                .replace(/PI/g, "Math.PI")
+                .replace(/\be\b/g, "Math.E")
+                .replace(/sqrt\(/g, "Math.sqrt(")
+                .replace(/sin\(/g, "Math.sin(toRad(")
+                .replace(/cos\(/g, "Math.cos(toRad(")
+                .replace(/tan\(/g, "Math.tan(toRad(")
+                .replace(/log\(/g, "Math.log10(")
+                .replace(/ln\(/g, "Math.log(");
 
         exp =
             exp.replace(
-                regex,
-                (_, value) =>
-                    `factorial(${value})`
+                /(\d+(?:\.\d+)?)\^2/g,
+                "Math.pow($1,2)"
             );
+
+        exp =
+            exp.replace(
+                /(\d+(?:\.\d+)?)\^3/g,
+                "Math.pow($1,3)"
+            );
+
+        exp =
+            exp.replace(
+                /(\d+(?:\.\d+)?)!/g,
+                "factorial($1)"
+            );
+
+        exp =
+            exp.replace(
+                /(\d+(?:\.\d+)?)\^(\d+(?:\.\d+)?)/g,
+                "Math.pow($1,$2)"
+            );
+
+        exp =
+            exp.replace(
+                /×/g,
+                "*"
+            );
+
+        const allowed =
+            /^[0-9+\-*/().,\sA-Za-z_]+$/;
+
+        if (!allowed.test(exp)) {
+            throw new Error("Invalid");
+        }
+
+        const result =
+            Function(
+                "toRad",
+                "factorial",
+                `"use strict"; return (${exp})`
+            )(toRad, factorial);
+
+        if (
+            typeof result !== "number" ||
+            !Number.isFinite(result)
+        ) {
+            throw new Error("Invalid result");
+        }
+
+        const formatted =
+            formatNumber(result);
+
+        resultDisplay.textContent =
+            formatted;
+
+        addHistory(
+            original,
+            formatted
+        );
+
+        expression =
+            String(result);
+
+        expressionDisplay.textContent =
+            original;
+
     }
 
-    return exp;
+    catch (error) {
+
+        resultDisplay.textContent =
+            "Error";
+
+    }
+
+}
+
+
+function toRad(degrees) {
+
+    return degrees * Math.PI / 180;
+
 }
 
 
 function factorial(n) {
+
+    n = Number(n);
 
     if (
         !Number.isInteger(n) ||
@@ -685,79 +469,100 @@ function factorial(n) {
 
     let result = 1;
 
-    for (let i = 2; i <= n; i++) {
+    for (
+        let i = 2;
+        i <= n;
+        i++
+    ) {
         result *= i;
     }
 
     return result;
+
+}
+
+
+function formatNumber(number) {
+
+    if (
+        Math.abs(number) >= 1e12 ||
+        (
+            Math.abs(number) > 0 &&
+            Math.abs(number) < 1e-8
+        )
+    ) {
+        return number.toExponential(8);
+    }
+
+    return Number(
+        number.toFixed(10)
+    ).toString();
+
 }
 
 
 /* =========================================================
-   TRIG
+   KEYBOARD SUPPORT
    ========================================================= */
 
-function toRadians(value) {
+document.addEventListener(
+    "keydown",
+    event => {
 
-    if (angleModeValue === "DEG") {
-        return value * Math.PI / 180;
+        const key =
+            event.key;
+
+        if (
+            /^[0-9+\-*/().]$/.test(key)
+        ) {
+
+            addToExpression(key);
+
+        }
+
+        else if (key === "Enter") {
+
+            calculate();
+
+        }
+
+        else if (key === "Backspace") {
+
+            deleteLast();
+
+        }
+
+        else if (key === "Escape") {
+
+            clearCalculator();
+
+        }
+
     }
-
-    if (angleModeValue === "GRAD") {
-        return value * Math.PI / 200;
-    }
-
-    return value;
-}
-
-
-function trigSin(value) {
-    return Math.sin(toRadians(value));
-}
-
-function trigCos(value) {
-    return Math.cos(toRadians(value));
-}
-
-function trigTan(value) {
-    return Math.tan(toRadians(value));
-}
-
-
-function formatNumber(value) {
-
-    if (!Number.isFinite(value)) {
-        return "Error";
-    }
-
-    if (Math.abs(value) >= 1e12) {
-        return value.toExponential(8);
-    }
-
-    return Number(
-        value.toPrecision(12)
-    ).toString();
-}
+);
 
 
 /* =========================================================
    HISTORY
    ========================================================= */
 
-function addHistory(exp, result) {
+function addHistory(
+    calcExpression,
+    result
+) {
 
     history.unshift({
 
-        expression: exp,
-
+        expression: calcExpression,
         result: result,
 
-        time: new Date().toLocaleString()
+        date:
+            new Date().toLocaleString()
 
     });
 
     history =
-        history.slice(0,30);
+        history.slice(0, 100);
 
     localStorage.setItem(
         "leoCalcHistory",
@@ -765,312 +570,386 @@ function addHistory(exp, result) {
     );
 
     renderHistory();
+
 }
 
 
 function renderHistory() {
 
-    const list =
-        document.getElementById("historyList");
+    const container =
+        $("historyList");
 
-    if (!list) return;
+    if (!container) return;
 
     if (!history.length) {
 
-        list.innerHTML =
-            `<p style="color:#777d95;font-size:11px;">
-                No calculations yet.
-             </p>`;
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🕘</div>
+                <strong>No History</strong>
+                <p>Your calculations will appear here.</p>
+            </div>
+        `;
 
         return;
     }
 
-    list.innerHTML =
-        history.map((item,index) => `
+    container.innerHTML =
+        history.map(item => `
 
-            <div class="historyItem">
+            <div class="history-item">
 
-                <div>
-
-                    <div class="historyExpression">
-                        ${escapeHTML(item.expression)}
-                    </div>
-
-                    <div class="historyResult">
-                        = ${escapeHTML(
-                            formatNumber(item.result)
-                        )}
-                    </div>
-
+                <div class="history-expression">
+                    ${escapeHTML(item.expression)}
                 </div>
 
-                <button onclick="useHistory(${index})">
-                    Use
-                </button>
+                <div class="history-result">
+                    = ${escapeHTML(item.result)}
+                </div>
+
+                <div class="history-time">
+                    ${escapeHTML(item.date)}
+                </div>
 
             </div>
 
         `).join("");
+
 }
 
 
-function useHistory(index) {
+$("clearHistoryBtn")?.addEventListener(
+    "click",
+    () => {
 
-    if (!history[index]) return;
+        haptic();
 
-    expression =
-        String(history[index].result);
+        if (
+            !confirm(
+                "Clear calculation history?"
+            )
+        ) return;
 
-    answer =
-        Number(history[index].result);
+        history = [];
 
-    updateCalculatorDisplay();
-}
-
-
-function clearHistory() {
-
-    history = [];
-
-    localStorage.removeItem(
-        "leoCalcHistory"
-    );
-
-    renderHistory();
-}
-
-
-/* =========================================================
-   CALCULATOR TABS
-   ========================================================= */
-
-function switchCalcTab(tab, button) {
-
-    document
-        .querySelectorAll(".calcTabs button")
-        .forEach(btn =>
-            btn.classList.remove("active")
+        localStorage.removeItem(
+            "leoCalcHistory"
         );
 
-    button.classList.add("active");
+        renderHistory();
 
-    document
-        .getElementById("scientificPanel")
-        ?.classList.add("hidden");
-
-    document
-        .getElementById("engineeringPanel")
-        ?.classList.add("hidden");
-
-    document
-        .getElementById("utilitiesPanel")
-        ?.classList.add("hidden");
-
-    const panel =
-        document.getElementById(
-            tab + "Panel"
-        );
-
-    if (panel) {
-        panel.classList.remove("hidden");
     }
-}
-
-
-function openEngineering() {
-
-    openCalculator();
-
-    const button =
-        document.querySelectorAll(
-            ".calcTabs button"
-        )[1];
-
-    switchCalcTab(
-        "engineering",
-        button
-    );
-}
+);
 
 
 /* =========================================================
-   ENGINEERING TOOLS
+   FAVORITES
    ========================================================= */
 
-function engineeringTool(type) {
+function toggleFavorite(
+    tool
+) {
 
-    switch(type) {
+    const index =
+        favorites.indexOf(tool);
 
-        case "ohm":
-            openOhm();
-            break;
+    if (index === -1) {
 
-        case "power":
-            openPower();
-            break;
+        favorites.push(tool);
 
-        case "resistor":
-            openResistor();
-            break;
-
-        case "frequency":
-            openFrequency();
-            break;
-
-        case "percentage":
-            openPercentage();
-            break;
-
-        case "interest":
-            openInterest();
-            break;
-
-        case "emi":
-            openEMI();
-            break;
-
-        case "bmi":
-            openBMI();
-            break;
-    }
-}
-
-
-/* =========================================================
-   OHM
-   ========================================================= */
-
-function openOhm() {
-
-    openModal(
-        "Ohm's Law",
-        `
-
-        <div class="formGroup">
-            <label>Voltage (V)</label>
-            <input id="ohmV" type="number" placeholder="Optional">
-        </div>
-
-        <div class="formGroup">
-            <label>Current (A)</label>
-            <input id="ohmI" type="number" placeholder="Optional">
-        </div>
-
-        <div class="formGroup">
-            <label>Resistance (Ω)</label>
-            <input id="ohmR" type="number" placeholder="Optional">
-        </div>
-
-        <button class="actionButton"
-                onclick="calculateOhm()">
-            Calculate
-        </button>
-
-        <div id="ohmResult"></div>
-        `
-    );
-}
-
-
-function calculateOhm() {
-
-    const V =
-        parseFloat(document.getElementById("ohmV").value);
-
-    const I =
-        parseFloat(document.getElementById("ohmI").value);
-
-    const R =
-        parseFloat(document.getElementById("ohmR").value);
-
-    let result = "";
-
-    if (Number.isFinite(V) && Number.isFinite(I) && I !== 0) {
-
-        result =
-            `Resistance = ${formatNumber(V/I)} Ω`;
-
-    } else if (
-        Number.isFinite(V) &&
-        Number.isFinite(R) &&
-        R !== 0
-    ) {
-
-        result =
-            `Current = ${formatNumber(V/R)} A`;
-
-    } else if (
-        Number.isFinite(I) &&
-        Number.isFinite(R)
-    ) {
-
-        result =
-            `Voltage = ${formatNumber(I*R)} V`;
-
-    } else {
-
-        result =
-            "Enter any two values.";
     }
 
-    document.getElementById("ohmResult").innerHTML =
-        `<div class="resultBox">${result}</div>`;
-}
+    else {
 
+        favorites.splice(index, 1);
 
-/* =========================================================
-   POWER
-   ========================================================= */
+    }
 
-function openPower() {
-
-    openModal(
-        "Electrical Power",
-        `
-
-        <div class="formGroup">
-            <label>Voltage (V)</label>
-            <input id="powerV" type="number">
-        </div>
-
-        <div class="formGroup">
-            <label>Current (A)</label>
-            <input id="powerI" type="number">
-        </div>
-
-        <button class="actionButton"
-                onclick="calculatePower()">
-            Calculate P = V × I
-        </button>
-
-        <div id="powerResult"></div>
-        `
+    localStorage.setItem(
+        "leoCalcFavorites",
+        JSON.stringify(favorites)
     );
+
+    renderFavorites();
+
 }
 
 
-function calculatePower() {
+function renderFavorites() {
 
-    const V =
-        parseFloat(document.getElementById("powerV").value);
+    const container =
+        $("favoritesList");
 
-    const I =
-        parseFloat(document.getElementById("powerI").value);
+    if (!container) return;
 
-    if (!Number.isFinite(V) || !Number.isFinite(I)) {
+    if (!favorites.length) {
 
-        document.getElementById("powerResult").innerHTML =
-            `<div class="resultBox">
-                Enter valid values.
-             </div>`;
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">⭐</div>
+                <strong>No Favorites</strong>
+                <p>Your favorite tools will appear here.</p>
+            </div>
+        `;
 
         return;
+
     }
 
-    document.getElementById("powerResult").innerHTML =
-        `<div class="resultBox">
-            Power = <b>${formatNumber(V*I)} W</b>
-         </div>`;
+    container.innerHTML =
+        favorites.map(tool => {
+
+            const info =
+                TOOL_DATA[tool];
+
+            if (!info) return "";
+
+            return `
+
+                <button
+                    class="favorite-item"
+                    data-tool="${tool}">
+
+                    <div class="favorite-icon">
+                        ${info.icon}
+                    </div>
+
+                    <div>
+                        <strong>${info.title}</strong>
+                        <small>${info.subtitle}</small>
+                    </div>
+
+                </button>
+
+            `;
+
+        }).join("");
+
+}
+
+
+/* =========================================================
+   TOOL DATA
+   ========================================================= */
+
+const TOOL_DATA = {
+
+    resistor: {
+        title: "Resistor Calculator",
+        subtitle: "Calculate resistance from color bands",
+        icon: "Ω"
+    },
+
+    frequency: {
+        title: "Frequency Calculator",
+        subtitle: "Calculate frequency and period",
+        icon: "ƒ"
+    },
+
+    percentage: {
+        title: "Percentage Calculator",
+        subtitle: "Calculate percentage values",
+        icon: "%"
+    },
+
+    interest: {
+        title: "Interest Calculator",
+        subtitle: "Simple and compound interest",
+        icon: "📈"
+    },
+
+    emi: {
+        title: "EMI Calculator",
+        subtitle: "Calculate monthly loan EMI",
+        icon: "₹"
+    },
+
+    bmi: {
+        title: "BMI Calculator",
+        subtitle: "Calculate BMI",
+        icon: "⚖️"
+    },
+
+    time: {
+        title: "Time & Date",
+        subtitle: "Live clock and stopwatch",
+        icon: "🕐"
+    },
+
+    weather: {
+        title: "Live Weather",
+        subtitle: "Current weather",
+        icon: "🌤️"
+    },
+
+    converter: {
+        title: "Unit Converter",
+        subtitle: "Convert common units",
+        icon: "🔄"
+    },
+
+    money: {
+        title: "Money Tools",
+        subtitle: "Quick money calculations",
+        icon: "💰"
+    },
+
+    statistics: {
+        title: "Statistics",
+        subtitle: "Mean, median and more",
+        icon: "📊"
+    },
+
+    number: {
+        title: "Number System",
+        subtitle: "Binary, decimal and hexadecimal",
+        icon: "🔢"
+    },
+
+    security: {
+        title: "Security",
+        subtitle: "Generate secure passwords",
+        icon: "🔐"
+    },
+
+    notes: {
+        title: "Quick Notes",
+        subtitle: "Save simple notes",
+        icon: "📝"
+    }
+
+};
+
+
+/* =========================================================
+   TOOL OPENING
+   ========================================================= */
+
+document.addEventListener("click", event => {
+
+    const button =
+        event.target.closest("[data-tool]");
+
+    if (!button) return;
+
+    const tool =
+        button.dataset.tool;
+
+    if (!TOOL_DATA[tool]) return;
+
+    haptic();
+
+    openTool(tool);
+
+});
+
+
+function openTool(tool) {
+
+    const data =
+        TOOL_DATA[tool];
+
+    if (!data) return;
+
+    modalTitle.textContent =
+        data.title;
+
+    modalSubtitle.textContent =
+        data.subtitle;
+
+    modalBody.innerHTML =
+        getToolHTML(tool);
+
+    toolModal.classList.remove("hidden");
+
+    initializeTool(tool);
+
+}
+
+
+$("closeModalBtn")?.addEventListener(
+    "click",
+    closeModal
+);
+
+toolModal?.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target === toolModal
+        ) {
+            closeModal();
+        }
+
+    }
+);
+
+
+function closeModal() {
+
+    toolModal?.classList.add("hidden");
+
+    stopStopwatch();
+
+}
+
+
+/* =========================================================
+   TOOL HTML
+   ========================================================= */
+
+function getToolHTML(tool) {
+
+    switch (tool) {
+
+        case "resistor":
+            return resistorHTML();
+
+        case "frequency":
+            return frequencyHTML();
+
+        case "percentage":
+            return percentageHTML();
+
+        case "interest":
+            return interestHTML();
+
+        case "emi":
+            return emiHTML();
+
+        case "bmi":
+            return bmiHTML();
+
+        case "time":
+            return timeHTML();
+
+        case "weather":
+            return weatherHTML();
+
+        case "converter":
+            return converterHTML();
+
+        case "money":
+            return moneyHTML();
+
+        case "statistics":
+            return statisticsHTML();
+
+        case "number":
+            return numberHTML();
+
+        case "security":
+            return securityHTML();
+
+        case "notes":
+            return notesHTML();
+
+        default:
+            return "<p>Tool unavailable.</p>";
+
+    }
+
 }
 
 
@@ -1078,74 +957,120 @@ function calculatePower() {
    RESISTOR
    ========================================================= */
 
-function openResistor() {
+function resistorHTML() {
 
-    openModal(
-        "Resistor Calculator",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>R1 (Ω)</label>
-            <input id="r1" type="number">
+        <div class="form-group">
+            <label>Band 1</label>
+
+            <select id="r1" class="form-control">
+                <option value="0">Black - 0</option>
+                <option value="1">Brown - 1</option>
+                <option value="2">Red - 2</option>
+                <option value="3">Orange - 3</option>
+                <option value="4">Yellow - 4</option>
+                <option value="5">Green - 5</option>
+                <option value="6">Blue - 6</option>
+                <option value="7">Violet - 7</option>
+                <option value="8">Grey - 8</option>
+                <option value="9">White - 9</option>
+            </select>
         </div>
 
-        <div class="formGroup">
-            <label>R2 (Ω)</label>
-            <input id="r2" type="number">
+        <div class="form-group">
+            <label>Band 2</label>
+
+            <select id="r2" class="form-control">
+                <option value="0">Black - 0</option>
+                <option value="1">Brown - 1</option>
+                <option value="2">Red - 2</option>
+                <option value="3">Orange - 3</option>
+                <option value="4">Yellow - 4</option>
+                <option value="5">Green - 5</option>
+                <option value="6">Blue - 6</option>
+                <option value="7">Violet - 7</option>
+                <option value="8">Grey - 8</option>
+                <option value="9">White - 9</option>
+            </select>
         </div>
 
-        <button class="actionButton"
-                onclick="calculateResistor()">
-            Calculate
+        <div class="form-group">
+            <label>Multiplier</label>
+
+            <select id="rm" class="form-control">
+                <option value="1">×1 Ω</option>
+                <option value="10">×10 Ω</option>
+                <option value="100">×100 Ω</option>
+                <option value="1000">×1 kΩ</option>
+                <option value="10000">×10 kΩ</option>
+                <option value="100000">×100 kΩ</option>
+                <option value="1000000">×1 MΩ</option>
+                <option value="10000000">×10 MΩ</option>
+            </select>
+        </div>
+
+        <button
+            class="primary-btn full-btn"
+            id="calculateResistor">
+            Calculate Resistance
         </button>
 
         <div id="resistorResult"></div>
-        `
-    );
+
+    `;
+
 }
 
 
-function calculateResistor() {
+function initializeResistor() {
 
-    const r1 =
-        parseFloat(document.getElementById("r1").value);
+    $("calculateResistor")?.addEventListener(
+        "click",
+        () => {
 
-    const r2 =
-        parseFloat(document.getElementById("r2").value);
+            const a =
+                Number($("r1").value);
 
-    if (
-        !Number.isFinite(r1) ||
-        !Number.isFinite(r2)
-    ) {
+            const b =
+                Number($("r2").value);
 
-        document.getElementById("resistorResult").innerHTML =
-            `<div class="resultBox">
-                Enter valid resistance values.
-             </div>`;
+            const multiplier =
+                Number($("rm").value);
 
-        return;
+            const resistance =
+                ((a * 10) + b) * multiplier;
+
+            $("resistorResult").innerHTML = `
+                <div class="result-box">
+                    <h3>Resistance</h3>
+                    <div class="result-value">
+                        ${formatResistance(resistance)}
+                    </div>
+                    <div class="result-note">
+                        Calculated from the selected bands.
+                    </div>
+                </div>
+            `;
+
+        }
+    );
+
+}
+
+
+function formatResistance(value) {
+
+    if (value >= 1000000) {
+        return `${value / 1000000} MΩ`;
     }
 
-    const series = r1 + r2;
+    if (value >= 1000) {
+        return `${value / 1000} kΩ`;
+    }
 
-    const parallel =
-        r1 + r2 === 0
-            ? 0
-            : (r1*r2)/(r1+r2);
+    return `${value} Ω`;
 
-    document.getElementById("resistorResult").innerHTML =
-        `
-        <div class="resultBox">
-
-            Series:
-            <b>${formatNumber(series)} Ω</b>
-            <br>
-
-            Parallel:
-            <b>${formatNumber(parallel)} Ω</b>
-
-        </div>
-        `;
 }
 
 
@@ -1153,61 +1078,65 @@ function calculateResistor() {
    FREQUENCY
    ========================================================= */
 
-function openFrequency() {
+function frequencyHTML() {
 
-    openModal(
-        "Frequency Calculator",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>Frequency (Hz)</label>
-            <input id="frequencyHz" type="number">
+        <div class="form-group">
+            <label>Period (seconds)</label>
+
+            <input
+                id="periodInput"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="Example: 0.02">
         </div>
 
-        <button class="actionButton"
-                onclick="calculateFrequency()">
-            Calculate
+        <button
+            class="primary-btn full-btn"
+            id="calculateFrequency">
+            Calculate Frequency
         </button>
 
         <div id="frequencyResult"></div>
-        `
-    );
+
+    `;
+
 }
 
 
-function calculateFrequency() {
+function initializeFrequency() {
 
-    const f =
-        parseFloat(
-            document.getElementById("frequencyHz").value
-        );
+    $("calculateFrequency")?.addEventListener(
+        "click",
+        () => {
 
-    if (!Number.isFinite(f) || f <= 0) {
+            const period =
+                Number($("periodInput").value);
 
-        document.getElementById("frequencyResult").innerHTML =
-            `<div class="resultBox">
-                Enter a valid frequency.
-             </div>`;
+            if (
+                !period ||
+                period <= 0
+            ) {
+                showResult(
+                    "frequencyResult",
+                    "Enter a valid period."
+                );
+                return;
+            }
 
-        return;
-    }
+            const frequency =
+                1 / period;
 
-    const period = 1/f;
+            showResult(
+                "frequencyResult",
+                `${formatNumber(frequency)} Hz`
+            );
 
-    document.getElementById("frequencyResult").innerHTML =
-        `
-        <div class="resultBox">
+        }
+    );
 
-            Period:
-            <b>${formatNumber(period)} s</b>
-
-            <br>
-
-            Angular Frequency:
-            <b>${formatNumber(2*Math.PI*f)} rad/s</b>
-
-        </div>
-        `;
 }
 
 
@@ -1215,60 +1144,79 @@ function calculateFrequency() {
    PERCENTAGE
    ========================================================= */
 
-function openPercentage() {
+function percentageHTML() {
 
-    openModal(
-        "Percentage",
-        `
+    return `
 
-        <div class="formGroup">
+        <div class="form-group">
             <label>Value</label>
-            <input id="percentValue" type="number">
+
+            <input
+                id="percentValue"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="Example: 500">
         </div>
 
-        <div class="formGroup">
-            <label>Percentage (%)</label>
-            <input id="percentRate" type="number">
+        <div class="form-group">
+            <label>Percentage</label>
+
+            <input
+                id="percentRate"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="Example: 18">
         </div>
 
-        <button class="actionButton"
-                onclick="calculatePercentage()">
+        <button
+            class="primary-btn full-btn"
+            id="calculatePercentage">
             Calculate
         </button>
 
-        <div id="percentResult"></div>
-        `
-    );
+        <div id="percentageResult"></div>
+
+    `;
+
 }
 
 
-function calculatePercentage() {
+function initializePercentage() {
 
-    const value =
-        parseFloat(
-            document.getElementById("percentValue").value
-        );
+    $("calculatePercentage")?.addEventListener(
+        "click",
+        () => {
 
-    const rate =
-        parseFloat(
-            document.getElementById("percentRate").value
-        );
+            const value =
+                Number($("percentValue").value);
 
-    if (
-        !Number.isFinite(value) ||
-        !Number.isFinite(rate)
-    ) return;
+            const rate =
+                Number($("percentRate").value);
 
-    const result =
-        value * rate / 100;
+            if (
+                !Number.isFinite(value) ||
+                !Number.isFinite(rate)
+            ) {
+                showResult(
+                    "percentageResult",
+                    "Enter valid values."
+                );
+                return;
+            }
 
-    document.getElementById("percentResult").innerHTML =
-        `
-        <div class="resultBox">
-            ${rate}% of ${value} =
-            <b>${formatNumber(result)}</b>
-        </div>
-        `;
+            const result =
+                value * rate / 100;
+
+            showResult(
+                "percentageResult",
+                formatNumber(result)
+            );
+
+        }
+    );
+
 }
 
 
@@ -1276,81 +1224,108 @@ function calculatePercentage() {
    INTEREST
    ========================================================= */
 
-function openInterest() {
+function interestHTML() {
 
-    openModal(
-        "Simple Interest",
-        `
+    return `
 
-        <div class="formGroup">
+        <div class="form-group">
             <label>Principal</label>
-            <input id="interestP" type="number">
+
+            <input
+                id="interestPrincipal"
+                class="form-control"
+                type="number"
+                placeholder="10000">
         </div>
 
-        <div class="formGroup">
-            <label>Rate (%)</label>
-            <input id="interestR" type="number">
+        <div class="form-group">
+            <label>Annual Rate (%)</label>
+
+            <input
+                id="interestRate"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="7.5">
         </div>
 
-        <div class="formGroup">
-            <label>Time (Years)</label>
-            <input id="interestT" type="number">
+        <div class="form-group">
+            <label>Time (years)</label>
+
+            <input
+                id="interestYears"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="5">
         </div>
 
-        <button class="actionButton"
-                onclick="calculateInterest()">
-            Calculate
+        <button
+            class="primary-btn full-btn"
+            id="calculateInterest">
+            Calculate Interest
         </button>
 
         <div id="interestResult"></div>
-        `
-    );
+
+    `;
+
 }
 
 
-function calculateInterest() {
+function initializeInterest() {
 
-    const P =
-        parseFloat(
-            document.getElementById("interestP").value
-        );
+    $("calculateInterest")?.addEventListener(
+        "click",
+        () => {
 
-    const R =
-        parseFloat(
-            document.getElementById("interestR").value
-        );
+            const p =
+                Number($("interestPrincipal").value);
 
-    const T =
-        parseFloat(
-            document.getElementById("interestT").value
-        );
+            const r =
+                Number($("interestRate").value);
 
-    if (
-        !Number.isFinite(P) ||
-        !Number.isFinite(R) ||
-        !Number.isFinite(T)
-    ) return;
+            const t =
+                Number($("interestYears").value);
 
-    const interest =
-        P*R*T/100;
+            if (
+                p <= 0 ||
+                r < 0 ||
+                t <= 0
+            ) {
 
-    const total =
-        P+interest;
+                showResult(
+                    "interestResult",
+                    "Enter valid values."
+                );
 
-    document.getElementById("interestResult").innerHTML =
-        `
-        <div class="resultBox">
+                return;
+            }
 
-            Interest:
-            <b>${formatNumber(interest)}</b>
+            const simpleInterest =
+                p * r * t / 100;
 
-            <br>
+            const total =
+                p + simpleInterest;
 
-            Total:
-            <b>${formatNumber(total)}</b>
+            $("interestResult").innerHTML = `
+                <div class="result-box">
+                    <h3>Simple Interest</h3>
 
-        </div>
-        `;
+                    <div class="result-value">
+                        ${formatNumber(simpleInterest)}
+                    </div>
+
+                    <div class="result-note">
+                        Total Amount:
+                        ${formatNumber(total)}
+                    </div>
+                </div>
+            `;
+
+        }
+    );
+
 }
 
 
@@ -1358,112 +1333,142 @@ function calculateInterest() {
    EMI
    ========================================================= */
 
-function openEMI() {
+function emiHTML() {
 
-    openModal(
-        "EMI Calculator",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>Loan Amount (₹)</label>
-            <input id="emiP" type="number">
+        <div class="form-group">
+            <label>Loan Amount</label>
+
+            <input
+                id="loanAmount"
+                class="form-control"
+                type="number"
+                placeholder="500000">
         </div>
 
-        <div class="formGroup">
+        <div class="form-group">
             <label>Annual Interest (%)</label>
-            <input id="emiRate" type="number">
+
+            <input
+                id="loanRate"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="8.5">
         </div>
 
-        <div class="formGroup">
-            <label>Tenure (Months)</label>
-            <input id="emiMonths" type="number">
+        <div class="form-group">
+            <label>Tenure (months)</label>
+
+            <input
+                id="loanMonths"
+                class="form-control"
+                type="number"
+                placeholder="60">
         </div>
 
-        <button class="actionButton"
-                onclick="calculateEMI()">
+        <button
+            class="primary-btn full-btn"
+            id="calculateEMI">
             Calculate EMI
         </button>
 
         <div id="emiResult"></div>
-        `
-    );
+
+    `;
+
 }
 
 
-function calculateEMI() {
+function initializeEMI() {
 
-    const P =
-        parseFloat(
-            document.getElementById("emiP").value
-        );
+    $("calculateEMI")?.addEventListener(
+        "click",
+        () => {
 
-    const annual =
-        parseFloat(
-            document.getElementById("emiRate").value
-        );
+            const principal =
+                Number($("loanAmount").value);
 
-    const n =
-        parseInt(
-            document.getElementById("emiMonths").value
-        );
+            const annualRate =
+                Number($("loanRate").value);
 
-    if (
-        !Number.isFinite(P) ||
-        !Number.isFinite(annual) ||
-        !Number.isInteger(n) ||
-        n <= 0
-    ) {
+            const months =
+                Number($("loanMonths").value);
 
-        document.getElementById("emiResult").innerHTML =
-            `<div class="resultBox">
-                Enter valid loan details.
-             </div>`;
+            if (
+                principal <= 0 ||
+                annualRate < 0 ||
+                months <= 0
+            ) {
 
-        return;
-    }
+                showResult(
+                    "emiResult",
+                    "Enter valid values."
+                );
 
-    const r =
-        annual / 12 / 100;
+                return;
+            }
 
-    let emi;
+            const monthlyRate =
+                annualRate / 12 / 100;
 
-    if (r === 0) {
+            let emi;
 
-        emi = P/n;
+            if (monthlyRate === 0) {
 
-    } else {
+                emi =
+                    principal / months;
 
-        emi =
-            P*r*
-            Math.pow(1+r,n) /
-            (Math.pow(1+r,n)-1);
-    }
+            }
 
-    const total =
-        emi*n;
+            else {
 
-    const interest =
-        total-P;
+                emi =
+                    principal *
+                    monthlyRate *
+                    Math.pow(
+                        1 + monthlyRate,
+                        months
+                    ) /
+                    (
+                        Math.pow(
+                            1 + monthlyRate,
+                            months
+                        ) - 1
+                    );
 
-    document.getElementById("emiResult").innerHTML =
-        `
-        <div class="resultBox">
+            }
 
-            Monthly EMI:
-            <b>₹${formatNumber(emi)}</b>
+            const total =
+                emi * months;
 
-            <br>
+            const interest =
+                total - principal;
 
-            Total Payment:
-            <b>₹${formatNumber(total)}</b>
+            $("emiResult").innerHTML = `
+                <div class="result-box">
 
-            <br>
+                    <h3>Monthly EMI</h3>
 
-            Total Interest:
-            <b>₹${formatNumber(interest)}</b>
+                    <div class="result-value">
+                        ₹${formatNumber(emi)}
+                    </div>
 
-        </div>
-        `;
+                    <div class="result-note">
+                        Total Payment:
+                        ₹${formatNumber(total)}
+                        <br><br>
+                        Total Interest:
+                        ₹${formatNumber(interest)}
+                    </div>
+
+                </div>
+            `;
+
+        }
+    );
+
 }
 
 
@@ -1471,82 +1476,114 @@ function calculateEMI() {
    BMI
    ========================================================= */
 
-function openBMI() {
+function bmiHTML() {
 
-    openModal(
-        "BMI Calculator",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>Weight (kg)</label>
-            <input id="bmiWeight" type="number">
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Height (cm)</label>
+
+                <input
+                    id="bmiHeight"
+                    class="form-control"
+                    type="number"
+                    placeholder="170">
+            </div>
+
+            <div class="form-group">
+                <label>Weight (kg)</label>
+
+                <input
+                    id="bmiWeight"
+                    class="form-control"
+                    type="number"
+                    placeholder="65">
+            </div>
+
         </div>
 
-        <div class="formGroup">
-            <label>Height (cm)</label>
-            <input id="bmiHeight" type="number">
-        </div>
-
-        <button class="actionButton"
-                onclick="calculateBMI()">
+        <button
+            class="primary-btn full-btn"
+            id="calculateBMI">
             Calculate BMI
         </button>
 
         <div id="bmiResult"></div>
-        `
-    );
+
+    `;
+
 }
 
 
-function calculateBMI() {
+function initializeBMI() {
 
-    const weight =
-        parseFloat(
-            document.getElementById("bmiWeight").value
-        );
+    $("calculateBMI")?.addEventListener(
+        "click",
+        () => {
 
-    const height =
-        parseFloat(
-            document.getElementById("bmiHeight").value
-        );
+            const height =
+                Number($("bmiHeight").value);
 
-    if (
-        !Number.isFinite(weight) ||
-        !Number.isFinite(height) ||
-        height <= 0
-    ) return;
+            const weight =
+                Number($("bmiWeight").value);
 
-    const meters =
-        height/100;
+            if (
+                height <= 0 ||
+                weight <= 0
+            ) {
 
-    const bmi =
-        weight/(meters*meters);
+                showResult(
+                    "bmiResult",
+                    "Enter valid values."
+                );
 
-    let category;
+                return;
+            }
 
-    if (bmi < 18.5) {
-        category = "Below standard range";
-    } else if (bmi < 25) {
-        category = "Standard range";
-    } else if (bmi < 30) {
-        category = "Above standard range";
-    } else {
-        category = "High range";
-    }
+            const meters =
+                height / 100;
 
-    document.getElementById("bmiResult").innerHTML =
-        `
-        <div class="resultBox">
+            const bmi =
+                weight /
+                (meters * meters);
 
-            BMI:
-            <b>${formatNumber(bmi)}</b>
+            let category;
 
-            <br>
+            if (bmi < 18.5) {
+                category = "Below the usual adult range";
+            }
 
-            ${category}
+            else if (bmi < 25) {
+                category = "Usual adult range";
+            }
 
-        </div>
-        `;
+            else if (bmi < 30) {
+                category = "Above the usual adult range";
+            }
+
+            else {
+                category = "Higher adult range";
+            }
+
+            $("bmiResult").innerHTML = `
+                <div class="result-box">
+                    <h3>BMI</h3>
+
+                    <div class="result-value">
+                        ${formatNumber(bmi)}
+                    </div>
+
+                    <div class="result-note">
+                        ${category}
+                    </div>
+                </div>
+            `;
+
+        }
+    );
+
 }
 
 
@@ -1554,146 +1591,222 @@ function calculateBMI() {
    TIME & DATE
    ========================================================= */
 
-function openTimeDate() {
+function timeHTML() {
 
-    openModal(
-        "Time & Date",
-        `
+    return `
 
-        <div class="bigTime" id="bigTime">
-            --
-        </div>
+        <div class="weather-card">
 
-        <div class="bigDate" id="bigDate">
-            --
-        </div>
+            <div id="liveDate">
+                Loading date...
+            </div>
 
-        <hr style="
-            border:0;
-            border-top:1px solid rgba(255,255,255,.08);
-        ">
-
-        <div class="stopwatch"
-             id="stopwatch">
-            00:00:00
-        </div>
-
-        <div class="buttonRow">
-
-            <button onclick="startStopwatch()">
-                Start
-            </button>
-
-            <button onclick="pauseStopwatch()">
-                Pause
-            </button>
-
-            <button onclick="resetStopwatch()">
-                Reset
-            </button>
+            <div
+                id="liveClock"
+                class="weather-temp">
+                00:00:00
+            </div>
 
         </div>
-        `
-    );
 
-    updateBigTime();
+        <div class="stopwatch">
+
+            <div
+                id="stopwatchDisplay"
+                class="stopwatch-time">
+                00:00.00
+            </div>
+
+            <div class="stopwatch-controls">
+
+                <button id="stopwatchStart">
+                    Start
+                </button>
+
+                <button id="stopwatchReset">
+                    Reset
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
 }
 
 
-function updateBigTime() {
+function initializeTime() {
 
-    const now = new Date();
+    updateClock();
+
+    window._leoClock =
+        setInterval(
+            updateClock,
+            1000
+        );
+
+    $("stopwatchStart")?.addEventListener(
+        "click",
+        toggleStopwatch
+    );
+
+    $("stopwatchReset")?.addEventListener(
+        "click",
+        resetStopwatch
+    );
+
+}
+
+
+function updateClock() {
+
+    const now =
+        new Date();
 
     const time =
         now.toLocaleTimeString();
 
     const date =
         now.toLocaleDateString(
-            [],
+            undefined,
             {
-                weekday:"long",
-                year:"numeric",
-                month:"long",
-                day:"numeric"
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
             }
         );
 
-    const t =
-        document.getElementById("bigTime");
+    if ($("liveClock")) {
+        $("liveClock").textContent =
+            time;
+    }
 
-    const d =
-        document.getElementById("bigDate");
+    if ($("liveDate")) {
+        $("liveDate").textContent =
+            date;
+    }
 
-    if (t) t.textContent = time;
-    if (d) d.textContent = date;
 }
-
-
-setInterval(
-    updateBigTime,
-    1000
-);
 
 
 /* =========================================================
    STOPWATCH
    ========================================================= */
 
-function startStopwatch() {
+function toggleStopwatch() {
 
-    if (stopwatchInterval) return;
+    haptic();
 
-    stopwatchInterval =
-        setInterval(() => {
+    if (stopwatchRunning) {
 
-            stopwatchSeconds++;
+        stopwatchElapsed +=
+            Date.now() -
+            stopwatchStart;
 
-            renderStopwatch();
+        stopwatchRunning = false;
 
-        },1000);
+        clearInterval(
+            stopwatchInterval
+        );
+
+        $("stopwatchStart").textContent =
+            "Start";
+
+    }
+
+    else {
+
+        stopwatchStart =
+            Date.now();
+
+        stopwatchRunning = true;
+
+        stopwatchInterval =
+            setInterval(
+                updateStopwatch,
+                30
+            );
+
+        $("stopwatchStart").textContent =
+            "Pause";
+
+    }
+
 }
 
 
-function pauseStopwatch() {
+function updateStopwatch() {
 
-    clearInterval(stopwatchInterval);
+    let elapsed =
+        stopwatchElapsed;
 
-    stopwatchInterval = null;
+    if (stopwatchRunning) {
+
+        elapsed +=
+            Date.now() -
+            stopwatchStart;
+
+    }
+
+    const minutes =
+        Math.floor(
+            elapsed / 60000
+        );
+
+    const seconds =
+        Math.floor(
+            (elapsed % 60000) / 1000
+        );
+
+    const hundredths =
+        Math.floor(
+            (elapsed % 1000) / 10
+        );
+
+    const output =
+        `${String(minutes).padStart(2, "0")}:` +
+        `${String(seconds).padStart(2, "0")}.` +
+        `${String(hundredths).padStart(2, "0")}`;
+
+    if ($("stopwatchDisplay")) {
+        $("stopwatchDisplay").textContent =
+            output;
+    }
+
 }
 
 
 function resetStopwatch() {
 
-    pauseStopwatch();
+    stopwatchRunning = false;
+    stopwatchElapsed = 0;
 
-    stopwatchSeconds = 0;
+    clearInterval(
+        stopwatchInterval
+    );
 
-    renderStopwatch();
+    stopwatchInterval = null;
+
+    if ($("stopwatchStart")) {
+        $("stopwatchStart").textContent =
+            "Start";
+    }
+
+    updateStopwatch();
+
 }
 
 
-function renderStopwatch() {
+function stopStopwatch() {
 
-    const h =
-        Math.floor(stopwatchSeconds/3600);
+    clearInterval(
+        stopwatchInterval
+    );
 
-    const m =
-        Math.floor(
-            (stopwatchSeconds%3600)/60
-        );
+    stopwatchInterval = null;
 
-    const s =
-        stopwatchSeconds%60;
-
-    const el =
-        document.getElementById("stopwatch");
-
-    if (!el) return;
-
-    el.textContent =
-        `${String(h).padStart(2,"0")}:
-         ${String(m).padStart(2,"0")}:
-         ${String(s).padStart(2,"0")}`;
 }
 
 
@@ -1701,35 +1814,63 @@ function renderStopwatch() {
    WEATHER
    ========================================================= */
 
-function openWeather() {
+function weatherHTML() {
 
-    openModal(
-        "Weather",
-        `
+    return `
 
-        <div class="weatherMain">
+        <div id="weatherContainer">
 
-            <div id="weatherStatus">
-                Getting your location...
+            <div class="weather-card">
+
+                <div style="font-size:40px">
+                    🌤️
+                </div>
+
+                <div>
+                    Getting your weather...
+                </div>
+
             </div>
 
-            <div id="weatherContent"></div>
-
         </div>
-        `
-    );
 
-    getWeather();
+        <button
+            class="primary-btn full-btn"
+            id="refreshWeather">
+            Refresh Weather
+        </button>
+
+    `;
+
 }
 
 
-function getWeather() {
+function initializeWeather() {
+
+    loadWeather();
+
+    $("refreshWeather")?.addEventListener(
+        "click",
+        loadWeather
+    );
+
+}
+
+
+function loadWeather() {
+
+    const container =
+        $("weatherContainer");
+
+    if (!container) return;
 
     if (!navigator.geolocation) {
 
-        setWeatherStatus(
-            "Geolocation is not supported."
-        );
+        container.innerHTML = `
+            <div class="result-box">
+                Location is not supported by this browser.
+            </div>
+        `;
 
         return;
     }
@@ -1746,11 +1887,14 @@ function getWeather() {
 
             try {
 
-                const url =
-                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`;
-
                 const response =
-                    await fetch(url);
+                    await fetch(
+                        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`
+                    );
+
+                if (!response.ok) {
+                    throw new Error("Weather error");
+                }
 
                 const data =
                     await response.json();
@@ -1758,69 +1902,153 @@ function getWeather() {
                 const current =
                     data.current;
 
-                const content =
-                    document.getElementById(
-                        "weatherContent"
+                const weather =
+                    weatherDescription(
+                        current.weather_code
                     );
 
-                if (content) {
+                container.innerHTML = `
 
-                    content.innerHTML =
-                        `
-                        <div class="weatherTemp">
-                            ${Math.round(
-                                current.temperature_2m
-                            )}°C
+                    <div class="weather-card">
+
+                        <div style="font-size:42px">
+                            ${weather.icon}
                         </div>
 
-                        <div class="weatherInfo">
+                        <div class="weather-temp">
+                            ${current.temperature_2m}°
+                        </div>
 
-                            Humidity:
-                            ${current.relative_humidity_2m}%
+                        <div class="weather-location">
+                            ${weather.text}
+                        </div>
 
-                            <br>
+                        <div class="weather-details">
 
-                            Wind:
-                            ${current.wind_speed_10m} km/h
+                            <div class="weather-detail">
+                                <strong>
+                                    ${current.relative_humidity_2m}%
+                                </strong>
+                                <small>Humidity</small>
+                            </div>
+
+                            <div class="weather-detail">
+                                <strong>
+                                    ${current.wind_speed_10m}
+                                    km/h
+                                </strong>
+                                <small>Wind</small>
+                            </div>
 
                         </div>
-                        `;
-                }
 
-                setWeatherStatus(
-                    "Current weather"
-                );
+                    </div>
 
-            } catch(error) {
+                `;
 
-                setWeatherStatus(
-                    "Unable to load weather."
-                );
+            }
+
+            catch {
+
+                container.innerHTML = `
+                    <div class="result-box">
+                        Unable to load weather.
+                    </div>
+                `;
+
             }
 
         },
 
         () => {
 
-            setWeatherStatus(
-                "Location permission was denied."
-            );
+            container.innerHTML = `
+                <div class="result-box">
+                    Location permission is required for live weather.
+                </div>
+            `;
 
         }
+
     );
+
 }
 
 
-function setWeatherStatus(text) {
+function weatherDescription(code) {
 
-    const el =
-        document.getElementById(
-            "weatherStatus"
-        );
+    const map = {
 
-    if (el) {
-        el.textContent = text;
-    }
+        0: {
+            icon: "☀️",
+            text: "Clear sky"
+        },
+
+        1: {
+            icon: "🌤️",
+            text: "Mainly clear"
+        },
+
+        2: {
+            icon: "⛅",
+            text: "Partly cloudy"
+        },
+
+        3: {
+            icon: "☁️",
+            text: "Overcast"
+        },
+
+        45: {
+            icon: "🌫️",
+            text: "Fog"
+        },
+
+        48: {
+            icon: "🌫️",
+            text: "Rime fog"
+        },
+
+        51: {
+            icon: "🌦️",
+            text: "Light drizzle"
+        },
+
+        61: {
+            icon: "🌧️",
+            text: "Rain"
+        },
+
+        63: {
+            icon: "🌧️",
+            text: "Moderate rain"
+        },
+
+        65: {
+            icon: "🌧️",
+            text: "Heavy rain"
+        },
+
+        80: {
+            icon: "🌦️",
+            text: "Rain showers"
+        },
+
+        95: {
+            icon: "⛈️",
+            text: "Thunderstorm"
+        }
+
+    };
+
+    return (
+        map[code] ||
+        {
+            icon: "🌤️",
+            text: "Current weather"
+        }
+    );
+
 }
 
 
@@ -1828,289 +2056,237 @@ function setWeatherStatus(text) {
    CONVERTER
    ========================================================= */
 
-function openConverter() {
+function converterHTML() {
 
-    openModal(
-        "Engineering Converter",
-        `
+    return `
 
-        <div class="formGroup">
+        <div class="form-group">
+
             <label>Category</label>
 
-            <select id="converterCategory"
-                    onchange="updateConverterUnits()">
+            <select
+                id="conversionType"
+                class="form-control">
 
                 <option value="length">
                     Length
                 </option>
 
-                <option value="mass">
-                    Mass
+                <option value="weight">
+                    Weight
                 </option>
 
                 <option value="temperature">
                     Temperature
                 </option>
 
-                <option value="speed">
-                    Speed
-                </option>
-
-                <option value="area">
-                    Area
-                </option>
-
-                <option value="volume">
-                    Volume
-                </option>
-
-                <option value="data">
-                    Data
-                </option>
-
-                <option value="energy">
-                    Energy
-                </option>
-
-                <option value="power">
-                    Power
-                </option>
-
-                <option value="pressure">
-                    Pressure
-                </option>
-
             </select>
+
         </div>
 
-        <div class="formGroup">
-            <label>From</label>
+        <div class="form-row">
 
-            <select id="converterFrom"></select>
+            <div class="form-group">
+
+                <label>From</label>
+
+                <select
+                    id="fromUnit"
+                    class="form-control">
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>To</label>
+
+                <select
+                    id="toUnit"
+                    class="form-control">
+                </select>
+
+            </div>
+
         </div>
 
-        <div class="formGroup">
-            <label>To</label>
+        <div class="form-group">
 
-            <select id="converterTo"></select>
-        </div>
-
-        <div class="formGroup">
             <label>Value</label>
 
             <input
-                id="converterValue"
+                id="conversionValue"
+                class="form-control"
                 type="number"
-            >
+                step="any"
+                placeholder="Enter value">
+
         </div>
 
-        <button class="actionButton"
-                onclick="calculateConversion()">
+        <button
+            class="primary-btn full-btn"
+            id="convertBtn">
             Convert
         </button>
 
-        <div id="converterResult"></div>
-        `
-    );
+        <div id="conversionResult"></div>
 
-    updateConverterUnits();
+    `;
+
 }
 
 
-const converterUnits = {
+const conversionUnits = {
 
     length: {
         meter: 1,
         kilometer: 1000,
-        centimeter: .01,
-        millimeter: .001,
-        foot: .3048,
-        inch: .0254
+        centimeter: 0.01,
+        millimeter: 0.001,
+        mile: 1609.344,
+        yard: 0.9144,
+        foot: 0.3048,
+        inch: 0.0254
     },
 
-    mass: {
+    weight: {
         kilogram: 1,
-        gram: .001,
-        milligram: .000001,
-        pound: .453592
-    },
-
-    speed: {
-        "m/s": 1,
-        "km/h": 1/3.6,
-        mph: .44704
-    },
-
-    area: {
-        "m²": 1,
-        "km²": 1000000,
-        "cm²": .0001,
-        "ft²": .092903
-    },
-
-    volume: {
-        "m³": 1,
-        liter: .001,
-        milliliter: .000001
-    },
-
-    data: {
-        byte: 1,
-        KB: 1024,
-        MB: 1024**2,
-        GB: 1024**3
-    },
-
-    energy: {
-        joule: 1,
-        kilojoule: 1000,
-        calorie: 4.184,
-        kWh: 3600000
-    },
-
-    power: {
-        watt: 1,
-        kilowatt: 1000,
-        megawatt: 1000000,
-        horsepower: 745.7
-    },
-
-    pressure: {
-        pascal: 1,
-        kilopascal: 1000,
-        bar: 100000,
-        atm: 101325,
-        psi: 6894.76
+        gram: 0.001,
+        milligram: 0.000001,
+        pound: 0.45359237,
+        ounce: 0.0283495231
     }
+
 };
 
 
-function updateConverterUnits() {
+function initializeConverter() {
 
-    const category =
-        document.getElementById(
-            "converterCategory"
-        )?.value;
+    const type =
+        $("conversionType");
 
     const from =
-        document.getElementById(
-            "converterFrom"
-        );
+        $("fromUnit");
 
     const to =
-        document.getElementById(
-            "converterTo"
-        );
+        $("toUnit");
 
-    if (!from || !to) return;
+    function updateUnits() {
 
-    if (category === "temperature") {
+        const selected =
+            type.value;
+
+        let units;
+
+        if (
+            selected ===
+            "temperature"
+        ) {
+
+            units = [
+                "Celsius",
+                "Fahrenheit",
+                "Kelvin"
+            ];
+
+        }
+
+        else {
+
+            units =
+                Object.keys(
+                    conversionUnits[selected]
+                );
+
+        }
 
         from.innerHTML =
-            `
-            <option>Celsius</option>
-            <option>Fahrenheit</option>
-            <option>Kelvin</option>
-            `;
+            units.map(
+                unit =>
+                    `<option value="${unit}">
+                        ${capitalize(unit)}
+                    </option>`
+            ).join("");
 
         to.innerHTML =
-            `
-            <option>Celsius</option>
-            <option>Fahrenheit</option>
-            <option>Kelvin</option>
-            `;
+            units.map(
+                unit =>
+                    `<option value="${unit}">
+                        ${capitalize(unit)}
+                    </option>`
+            ).join("");
 
-        return;
     }
 
-    const units =
-        converterUnits[category];
+    type.addEventListener(
+        "change",
+        updateUnits
+    );
 
-    if (!units) return;
+    updateUnits();
 
-    const options =
-        Object.keys(units)
-            .map(unit =>
-                `<option>${unit}</option>`
-            )
-            .join("");
+    $("convertBtn")?.addEventListener(
+        "click",
+        () => {
 
-    from.innerHTML = options;
-    to.innerHTML = options;
-}
+            const value =
+                Number(
+                    $("conversionValue").value
+                );
 
+            const selected =
+                type.value;
 
-function calculateConversion() {
+            if (!Number.isFinite(value)) {
 
-    const category =
-        document.getElementById(
-            "converterCategory"
-        ).value;
+                showResult(
+                    "conversionResult",
+                    "Enter a valid number."
+                );
 
-    const value =
-        parseFloat(
-            document.getElementById(
-                "converterValue"
-            ).value
-        );
+                return;
+            }
 
-    const from =
-        document.getElementById(
-            "converterFrom"
-        ).value;
+            let result;
 
-    const to =
-        document.getElementById(
-            "converterTo"
-        ).value;
+            if (
+                selected ===
+                "temperature"
+            ) {
 
-    if (!Number.isFinite(value)) {
+                result =
+                    convertTemperature(
+                        value,
+                        from.value,
+                        to.value
+                    );
 
-        document.getElementById(
-            "converterResult"
-        ).innerHTML =
-            `<div class="resultBox">
-                Enter a valid value.
-             </div>`;
+            }
 
-        return;
-    }
+            else {
 
-    let result;
+                const base =
+                    value *
+                    conversionUnits[selected][
+                        from.value
+                    ];
 
-    if (category === "temperature") {
+                result =
+                    base /
+                    conversionUnits[selected][
+                        to.value
+                    ];
 
-        result =
-            convertTemperature(
-                value,
-                from,
-                to
+            }
+
+            showResult(
+                "conversionResult",
+                formatNumber(result)
             );
 
-    } else {
+        }
+    );
 
-        const units =
-            converterUnits[category];
-
-        result =
-            value *
-            units[from] /
-            units[to];
-    }
-
-    document.getElementById(
-        "converterResult"
-    ).innerHTML =
-        `
-        <div class="resultBox">
-
-            ${value} ${from}
-            =
-            <b>${formatNumber(result)}
-            ${to}</b>
-
-        </div>
-        `;
 }
 
 
@@ -2124,10 +2300,18 @@ function convertTemperature(
 
     if (from === "Celsius") {
         celsius = value;
-    } else if (from === "Fahrenheit") {
-        celsius = (value-32)*5/9;
-    } else {
-        celsius = value-273.15;
+    }
+
+    else if (
+        from === "Fahrenheit"
+    ) {
+        celsius =
+            (value - 32) * 5 / 9;
+    }
+
+    else {
+        celsius =
+            value - 273.15;
     }
 
     if (to === "Celsius") {
@@ -2135,118 +2319,125 @@ function convertTemperature(
     }
 
     if (to === "Fahrenheit") {
-        return celsius*9/5+32;
+        return celsius * 9 / 5 + 32;
     }
 
-    return celsius+273.15;
+    return celsius + 273.15;
+
 }
 
 
 /* =========================================================
-   MONEY
+   MONEY TOOLS
    ========================================================= */
 
-function openMoneyTools() {
+function moneyHTML() {
 
-    openModal(
-        "Money Tools",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>Tool</label>
-
-            <select id="moneyType">
-
-                <option value="gst">
-                    GST
-                </option>
-
-                <option value="discount">
-                    Discount
-                </option>
-
-            </select>
-        </div>
-
-        <div class="formGroup">
+        <div class="form-group">
             <label>Amount</label>
-            <input id="moneyAmount" type="number">
+
+            <input
+                id="moneyAmount"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="1000">
         </div>
 
-        <div class="formGroup">
-            <label>Rate (%)</label>
-            <input id="moneyRate" type="number">
+        <div class="form-group">
+            <label>Percentage</label>
+
+            <input
+                id="moneyPercent"
+                class="form-control"
+                type="number"
+                step="any"
+                placeholder="18">
         </div>
 
-        <button class="actionButton"
-                onclick="calculateMoney()">
-            Calculate
-        </button>
+        <div class="form-row">
+
+            <button
+                class="primary-btn"
+                id="addMoneyPercent">
+                Add %
+            </button>
+
+            <button
+                class="primary-btn"
+                id="removeMoneyPercent">
+                Remove %
+            </button>
+
+        </div>
 
         <div id="moneyResult"></div>
 
-        `
-    );
+    `;
+
 }
 
 
-function calculateMoney() {
+function initializeMoney() {
 
-    const type =
-        document.getElementById(
-            "moneyType"
-        ).value;
+    $("addMoneyPercent")?.addEventListener(
+        "click",
+        () => {
+
+            moneyCalculation(true);
+
+        }
+    );
+
+    $("removeMoneyPercent")?.addEventListener(
+        "click",
+        () => {
+
+            moneyCalculation(false);
+
+        }
+    );
+
+}
+
+
+function moneyCalculation(add) {
 
     const amount =
-        parseFloat(
-            document.getElementById(
-                "moneyAmount"
-            ).value
-        );
+        Number($("moneyAmount").value);
 
-    const rate =
-        parseFloat(
-            document.getElementById(
-                "moneyRate"
-            ).value
-        );
+    const percentage =
+        Number($("moneyPercent").value);
 
     if (
         !Number.isFinite(amount) ||
-        !Number.isFinite(rate)
-    ) return;
+        !Number.isFinite(percentage)
+    ) {
 
-    let result;
+        showResult(
+            "moneyResult",
+            "Enter valid values."
+        );
 
-    if (type === "gst") {
+        return;
 
-        const tax =
-            amount*rate/100;
-
-        result =
-            `
-            GST = ₹${formatNumber(tax)}
-            <br>
-            Total = ₹${formatNumber(amount+tax)}
-            `;
-
-    } else {
-
-        const discount =
-            amount*rate/100;
-
-        result =
-            `
-            Discount = ₹${formatNumber(discount)}
-            <br>
-            Final Price = ₹${formatNumber(amount-discount)}
-            `;
     }
 
-    document.getElementById(
-        "moneyResult"
-    ).innerHTML =
-        `<div class="resultBox">${result}</div>`;
+    const change =
+        amount * percentage / 100;
+
+    const result =
+        add
+            ? amount + change
+            : amount - change;
+
+    showResult(
+        "moneyResult",
+        `₹${formatNumber(result)}`
+    );
+
 }
 
 
@@ -2254,131 +2445,182 @@ function calculateMoney() {
    STATISTICS
    ========================================================= */
 
-function openStatistics() {
+function statisticsHTML() {
 
-    openModal(
-        "Statistics",
-        `
+    return `
 
-        <div class="formGroup">
+        <div class="form-group">
 
             <label>
-                Numbers separated by comma
+                Enter numbers separated by commas
             </label>
 
             <textarea
-                id="statsInput"
-                rows="4"
-                placeholder="10, 20, 30, 40"
-            ></textarea>
+                id="statisticsInput"
+                class="form-control notes-area"
+                placeholder="10, 20, 30, 40, 50"></textarea>
 
         </div>
 
-        <button class="actionButton"
-                onclick="calculateStatistics()">
-            Calculate
+        <button
+            class="primary-btn full-btn"
+            id="calculateStatistics">
+            Calculate Statistics
         </button>
 
-        <div id="statsResult"></div>
+        <div id="statisticsResult"></div>
 
-        `
-    );
+    `;
+
 }
 
 
-function calculateStatistics() {
+function initializeStatistics() {
 
-    const raw =
-        document.getElementById(
-            "statsInput"
-        ).value;
+    $("calculateStatistics")?.addEventListener(
+        "click",
+        () => {
 
-    const numbers =
-        raw
-            .split(",")
-            .map(Number)
-            .filter(Number.isFinite);
+            const values =
+                $("statisticsInput")
+                    .value
+                    .split(",")
+                    .map(Number)
+                    .filter(Number.isFinite);
 
-    if (!numbers.length) return;
+            if (!values.length) {
 
-    const sorted =
-        [...numbers].sort((a,b)=>a-b);
+                showResult(
+                    "statisticsResult",
+                    "Enter valid numbers."
+                );
 
-    const sum =
-        numbers.reduce(
-            (a,b)=>a+b,
-            0
-        );
+                return;
 
-    const mean =
-        sum/numbers.length;
+            }
 
-    let median;
+            const sorted =
+                [...values].sort(
+                    (a, b) => a - b
+                );
 
-    const middle =
-        Math.floor(sorted.length/2);
+            const sum =
+                values.reduce(
+                    (a, b) => a + b,
+                    0
+                );
 
-    if (sorted.length%2) {
+            const mean =
+                sum / values.length;
 
-        median =
-            sorted[middle];
+            let median;
 
-    } else {
+            const middle =
+                Math.floor(
+                    sorted.length / 2
+                );
 
-        median =
-            (
-                sorted[middle-1] +
-                sorted[middle]
-            ) / 2;
-    }
+            if (
+                sorted.length % 2
+            ) {
+                median =
+                    sorted[middle];
+            }
 
-    const variance =
-        numbers.reduce(
-            (total,n) =>
-                total +
-                Math.pow(n-mean,2),
-            0
-        ) / numbers.length;
+            else {
+                median =
+                    (
+                        sorted[middle - 1] +
+                        sorted[middle]
+                    ) / 2;
+            }
 
-    const sd =
-        Math.sqrt(variance);
+            const min =
+                sorted[0];
 
-    document.getElementById(
-        "statsResult"
-    ).innerHTML =
-        `
-        <div class="resultBox">
+            const max =
+                sorted[sorted.length - 1];
 
-            Count:
-            <b>${numbers.length}</b>
+            const variance =
+                values.reduce(
+                    (total, value) =>
+                        total +
+                        Math.pow(
+                            value - mean,
+                            2
+                        ),
+                    0
+                ) / values.length;
 
-            <br>
+            const standardDeviation =
+                Math.sqrt(variance);
 
-            Sum:
-            <b>${formatNumber(sum)}</b>
+            $("statisticsResult").innerHTML = `
 
-            <br>
+                <div class="result-box">
 
-            Mean:
-            <b>${formatNumber(mean)}</b>
+                    <h3>Statistics</h3>
 
-            <br>
+                    <div class="number-result">
 
-            Median:
-            <b>${formatNumber(median)}</b>
+                        <div>
+                            <span>Count</span>
+                            <strong>
+                                ${values.length}
+                            </strong>
+                        </div>
 
-            <br>
+                        <div>
+                            <span>Sum</span>
+                            <strong>
+                                ${formatNumber(sum)}
+                            </strong>
+                        </div>
 
-            Variance:
-            <b>${formatNumber(variance)}</b>
+                        <div>
+                            <span>Mean</span>
+                            <strong>
+                                ${formatNumber(mean)}
+                            </strong>
+                        </div>
 
-            <br>
+                        <div>
+                            <span>Median</span>
+                            <strong>
+                                ${formatNumber(median)}
+                            </strong>
+                        </div>
 
-            Standard Deviation:
-            <b>${formatNumber(sd)}</b>
+                        <div>
+                            <span>Minimum</span>
+                            <strong>
+                                ${formatNumber(min)}
+                            </strong>
+                        </div>
 
-        </div>
-        `;
+                        <div>
+                            <span>Maximum</span>
+                            <strong>
+                                ${formatNumber(max)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Standard Deviation</span>
+                            <strong>
+                                ${formatNumber(standardDeviation)}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
 }
 
 
@@ -2386,154 +2628,265 @@ function calculateStatistics() {
    NUMBER SYSTEM
    ========================================================= */
 
-function openNumberSystem() {
+function numberHTML() {
 
-    openModal(
-        "Number System",
-        `
+    return `
 
-        <div class="formGroup">
-            <label>Decimal Integer</label>
+        <div class="form-group">
+
+            <label>Decimal Number</label>
 
             <input
                 id="numberInput"
+                class="form-control"
                 type="number"
-                step="1"
-            >
+                placeholder="255">
+
         </div>
 
-        <button class="actionButton"
-                onclick="convertNumberSystem()">
+        <button
+            class="primary-btn full-btn"
+            id="convertNumber">
             Convert
         </button>
 
         <div id="numberResult"></div>
 
-        `
-    );
+    `;
+
 }
 
 
-function convertNumberSystem() {
+function initializeNumber() {
 
-    const number =
-        Number(
-            document.getElementById(
-                "numberInput"
-            ).value
-        );
+    $("convertNumber")?.addEventListener(
+        "click",
+        () => {
 
-    if (
-        !Number.isInteger(number)
-    ) return;
+            const value =
+                Number(
+                    $("numberInput").value
+                );
 
-    document.getElementById(
-        "numberResult"
-    ).innerHTML =
-        `
-        <div class="resultBox">
+            if (
+                !Number.isInteger(value) ||
+                value < 0
+            ) {
 
-            Binary:
-            <b>${number.toString(2)}</b>
+                showResult(
+                    "numberResult",
+                    "Enter a positive whole number."
+                );
 
-            <br>
+                return;
 
-            Octal:
-            <b>${number.toString(8)}</b>
+            }
 
-            <br>
+            $("numberResult").innerHTML = `
 
-            Hexadecimal:
-            <b>${number.toString(16).toUpperCase()}</b>
+                <div class="number-result">
 
-        </div>
-        `;
+                    <div>
+                        <span>Decimal</span>
+                        <strong>${value}</strong>
+                    </div>
+
+                    <div>
+                        <span>Binary</span>
+                        <strong>
+                            ${value.toString(2)}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Octal</span>
+                        <strong>
+                            ${value.toString(8)}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Hexadecimal</span>
+                        <strong>
+                            ${value.toString(16).toUpperCase()}
+                        </strong>
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
 }
 
 
 /* =========================================================
-   SECURITY
+   SECURITY / PASSWORD
    ========================================================= */
 
-function openSecurity() {
+function securityHTML() {
 
-    openModal(
-        "Password Generator",
-        `
+    return `
 
-        <div class="passwordOutput"
-             id="passwordOutput">
-            Click Generate
-        </div>
-
-        <div class="formGroup">
+        <div class="form-group">
 
             <label>Password Length</label>
 
             <input
                 id="passwordLength"
+                class="form-control"
                 type="number"
-                min="6"
+                min="4"
                 max="64"
-                value="16"
-            >
+                value="16">
 
         </div>
 
-        <button class="actionButton"
-                onclick="generatePassword()">
+        <button
+            class="primary-btn full-btn"
+            id="generatePassword">
             Generate Password
         </button>
 
-        `
+        <div id="passwordResult"></div>
+
+    `;
+
+}
+
+
+function initializeSecurity() {
+
+    $("generatePassword")?.addEventListener(
+        "click",
+        generatePassword
     );
+
 }
 
 
 function generatePassword() {
 
     let length =
-        parseInt(
-            document.getElementById(
-                "passwordLength"
-            ).value
+        Number(
+            $("passwordLength").value
         );
-
-    if (!Number.isInteger(length)) {
-        length = 16;
-    }
 
     length =
         Math.min(
             64,
-            Math.max(6,length)
+            Math.max(
+                4,
+                length || 16
+            )
         );
 
     const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-        "abcdefghijklmnopqrstuvwxyz" +
-        "0123456789" +
+        "ABCDEFGHJKLMNPQRSTUVWXYZ" +
+        "abcdefghijkmnopqrstuvwxyz" +
+        "23456789" +
         "!@#$%^&*";
 
     let password = "";
 
-    const random =
-        new Uint32Array(length);
+    if (
+        window.crypto &&
+        crypto.getRandomValues
+    ) {
 
-    crypto.getRandomValues(random);
+        const values =
+            new Uint32Array(length);
 
-    for (let i=0;i<length;i++) {
+        crypto.getRandomValues(values);
 
-        password +=
-            chars[
-                random[i] % chars.length
-            ];
+        for (
+            let i = 0;
+            i < length;
+            i++
+        ) {
+
+            password +=
+                chars[
+                    values[i] % chars.length
+                ];
+
+        }
+
     }
 
-    document.getElementById(
-        "passwordOutput"
-    ).textContent =
-        password;
+    else {
+
+        for (
+            let i = 0;
+            i < length;
+            i++
+        ) {
+
+            password +=
+                chars[
+                    Math.floor(
+                        Math.random() *
+                        chars.length
+                    )
+                ];
+
+        }
+
+    }
+
+    $("passwordResult").innerHTML = `
+
+        <div class="result-box">
+
+            <h3>Generated Password</h3>
+
+            <div
+                class="result-value"
+                style="
+                    font-size:18px;
+                    overflow-wrap:anywhere;
+                    font-family:monospace;
+                ">
+                ${escapeHTML(password)}
+            </div>
+
+            <button
+                class="primary-btn full-btn"
+                id="copyPassword">
+                Copy
+            </button>
+
+        </div>
+
+    `;
+
+    $("copyPassword")?.addEventListener(
+        "click",
+        async () => {
+
+            try {
+
+                await navigator.clipboard.writeText(
+                    password
+                );
+
+                $("copyPassword").textContent =
+                    "Copied ✓";
+
+            }
+
+            catch {
+
+                $("copyPassword").textContent =
+                    "Copy failed";
+
+            }
+
+        }
+    );
+
 }
 
 
@@ -2541,280 +2894,140 @@ function generatePassword() {
    NOTES
    ========================================================= */
 
-function openNotes() {
+function notesHTML() {
 
-    openModal(
-        "Quick Notes",
-        `
+    const saved =
+        localStorage.getItem(
+            "leoCalcNotes"
+        ) || "";
 
-        <div class="formGroup">
-            <label>Title</label>
+    return `
 
-            <input
-                id="noteTitle"
-                placeholder="Note title"
-            >
-        </div>
+        <div class="form-group">
 
-        <div class="formGroup">
-            <label>Note</label>
+            <label>Your Note</label>
 
             <textarea
-                id="noteContent"
-                rows="5"
-                placeholder="Write something..."
-            ></textarea>
+                id="notesInput"
+                class="form-control notes-area"
+                placeholder="Write your note here...">${escapeHTML(saved)}</textarea>
+
         </div>
 
-        <button class="actionButton"
-                onclick="saveNote()">
+        <button
+            class="primary-btn full-btn"
+            id="saveNote">
             Save Note
         </button>
 
-        <div style="margin-top:20px">
-            ${renderNotesHTML()}
-        </div>
+        <div id="notesStatus"></div>
 
-        `
-    );
+    `;
+
 }
 
 
-function saveNote() {
+function initializeNotes() {
 
-    const title =
-        document.getElementById(
-            "noteTitle"
-        ).value.trim();
-
-    const content =
-        document.getElementById(
-            "noteContent"
-        ).value.trim();
-
-    if (!title && !content) return;
-
-    notes.unshift({
-
-        id: Date.now(),
-
-        title,
-
-        content,
-
-        date: new Date().toLocaleString()
-
-    });
-
-    localStorage.setItem(
-        "leoCalcNotes",
-        JSON.stringify(notes)
-    );
-
-    openNotes();
-}
-
-
-function renderNotesHTML() {
-
-    if (!notes.length) {
-
-        return `
-            <p style="color:#777d95;font-size:11px">
-                No notes yet.
-            </p>
-        `;
-    }
-
-    return notes.map(note => `
-
-        <div class="note">
-
-            <h4>
-                ${escapeHTML(note.title || "Untitled")}
-            </h4>
-
-            <p>
-                ${escapeHTML(note.content)}
-            </p>
-
-            <button onclick="deleteNote(${note.id})">
-                Delete
-            </button>
-
-        </div>
-
-    `).join("");
-}
-
-
-function deleteNote(id) {
-
-    notes =
-        notes.filter(
-            note => note.id !== id
-        );
-
-    localStorage.setItem(
-        "leoCalcNotes",
-        JSON.stringify(notes)
-    );
-
-    openNotes();
-}
-
-
-/* =========================================================
-   QR GENERATOR
-   ========================================================= */
-
-function openQR() {
-
-    openModal(
-        "QR Generator",
-        `
-
-        <div class="formGroup">
-
-            <label>Text / URL</label>
-
-            <textarea
-                id="qrText"
-                rows="4"
-                placeholder="Enter text or URL"
-            ></textarea>
-
-        </div>
-
-        <button class="actionButton"
-                onclick="generateQR()">
-            Generate QR
-        </button>
-
-        <div id="qrResult"></div>
-
-        `
-    );
-}
-
-
-function generateQR() {
-
-    const text =
-        document.getElementById(
-            "qrText"
-        ).value.trim();
-
-    if (!text) return;
-
-    const encoded =
-        encodeURIComponent(text);
-
-    const url =
-        `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`;
-
-    document.getElementById(
-        "qrResult"
-    ).innerHTML =
-        `
-        <img
-            class="qrImage"
-            src="${url}"
-            alt="QR Code"
-        >
-        `;
-}
-
-
-/* =========================================================
-   MODAL
-   ========================================================= */
-
-function openModal(title, body) {
-
-    const modal =
-        document.getElementById(
-            "toolModal"
-        );
-
-    const titleEl =
-        document.getElementById(
-            "modalTitle"
-        );
-
-    const bodyEl =
-        document.getElementById(
-            "modalBody"
-        );
-
-    if (!modal) return;
-
-    titleEl.textContent = title;
-
-    bodyEl.innerHTML = body;
-
-    modal.classList.add("show");
-
-    document.body.style.overflow = "hidden";
-}
-
-
-function closeToolModal() {
-
-    const modal =
-        document.getElementById(
-            "toolModal"
-        );
-
-    if (modal) {
-        modal.classList.remove("show");
-    }
-
-    document.body.style.overflow = "";
-}
-
-
-document
-    .getElementById("toolModal")
-    ?.addEventListener(
+    $("saveNote")?.addEventListener(
         "click",
-        event => {
+        () => {
 
-            if (
-                event.target.id === "toolModal"
-            ) {
-                closeToolModal();
-            }
+            const note =
+                $("notesInput").value;
+
+            localStorage.setItem(
+                "leoCalcNotes",
+                note
+            );
+
+            $("notesStatus").innerHTML = `
+
+                <div class="result-box">
+
+                    <h3>Saved ✓</h3>
+
+                    <div class="result-note">
+                        Your note has been saved
+                        on this device.
+                    </div>
+
+                </div>
+
+            `;
 
         }
     );
 
-
-/* =========================================================
-   SIDE MENU
-   ========================================================= */
-
-function openMenu() {
-
-    document
-        .getElementById("sideMenu")
-        ?.classList.add("show");
-
-    document
-        .getElementById("menuOverlay")
-        ?.classList.add("show");
 }
 
 
-function closeMenu() {
+/* =========================================================
+   TOOL INITIALIZER
+   ========================================================= */
 
-    document
-        .getElementById("sideMenu")
-        ?.classList.remove("show");
+function initializeTool(tool) {
 
-    document
-        .getElementById("menuOverlay")
-        ?.classList.remove("show");
+    switch (tool) {
+
+        case "resistor":
+            initializeResistor();
+            break;
+
+        case "frequency":
+            initializeFrequency();
+            break;
+
+        case "percentage":
+            initializePercentage();
+            break;
+
+        case "interest":
+            initializeInterest();
+            break;
+
+        case "emi":
+            initializeEMI();
+            break;
+
+        case "bmi":
+            initializeBMI();
+            break;
+
+        case "time":
+            initializeTime();
+            break;
+
+        case "weather":
+            initializeWeather();
+            break;
+
+        case "converter":
+            initializeConverter();
+            break;
+
+        case "money":
+            initializeMoney();
+            break;
+
+        case "statistics":
+            initializeStatistics();
+            break;
+
+        case "number":
+            initializeNumber();
+            break;
+
+        case "security":
+            initializeSecurity();
+            break;
+
+        case "notes":
+            initializeNotes();
+            break;
+
+    }
+
 }
 
 
@@ -2822,244 +3035,416 @@ function closeMenu() {
    SEARCH
    ========================================================= */
 
-function searchTools(value) {
+$("searchBtn")?.addEventListener(
+    "click",
+    () => {
 
-    const query =
-        value.trim().toLowerCase();
+        haptic();
 
-    document
-        .querySelectorAll(".toolCard")
-        .forEach(card => {
+        $("searchPanel")
+            ?.classList.toggle("hidden");
 
-            const name =
-                card.dataset.name
-                    .toLowerCase();
+        $("searchInput")?.focus();
 
-            card.style.display =
-                !query ||
-                name.includes(query)
-                    ? "flex"
-                    : "none";
-        });
-}
+    }
+);
+
+
+$("searchInput")?.addEventListener(
+    "input",
+    event => {
+
+        const query =
+            event.target.value
+                .trim()
+                .toLowerCase();
+
+        const container =
+            $("searchResults");
+
+        if (!container) return;
+
+        if (!query) {
+
+            container.innerHTML = "";
+            return;
+
+        }
+
+        const results =
+            Object.entries(
+                TOOL_DATA
+            ).filter(
+                ([key, data]) =>
+                    key.includes(query) ||
+                    data.title
+                        .toLowerCase()
+                        .includes(query) ||
+                    data.subtitle
+                        .toLowerCase()
+                        .includes(query)
+            );
+
+        if (!results.length) {
+
+            container.innerHTML = `
+                <div class="empty-state">
+                    No tools found.
+                </div>
+            `;
+
+            return;
+        }
+
+        container.innerHTML =
+            results.map(
+                ([key, data]) => `
+
+                    <button
+                        class="search-result"
+                        data-tool="${key}">
+
+                        <div class="search-result-icon">
+                            ${data.icon}
+                        </div>
+
+                        <div>
+                            <strong>
+                                ${data.title}
+                            </strong>
+
+                            <small>
+                                ${data.subtitle}
+                            </small>
+                        </div>
+
+                    </button>
+
+                `
+            ).join("");
+
+    }
+);
 
 
 /* =========================================================
    VOICE SEARCH
    ========================================================= */
 
-function startVoiceSearch() {
+$("voiceSearchBtn")?.addEventListener(
+    "click",
+    () => {
 
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
+        haptic();
 
-    if (!SpeechRecognition) {
+        const SpeechRecognition =
+            window.SpeechRecognition ||
+            window.webkitSpeechRecognition;
 
-        alert(
-            "Voice search is not supported in this browser."
-        );
+        if (!SpeechRecognition) {
 
-        return;
-    }
+            alert(
+                "Voice search is not supported in this browser."
+            );
 
-    const recognition =
-        new SpeechRecognition();
+            return;
 
-    recognition.lang = "en-IN";
+        }
 
-    recognition.start();
+        const recognition =
+            new SpeechRecognition();
 
-    recognition.onresult =
-        event => {
+        recognition.lang =
+            "en-IN";
 
-            const text =
-                event.results[0][0].transcript;
+        recognition.interimResults =
+            false;
 
-            const input =
-                document.getElementById(
-                    "searchInput"
+        recognition.start();
+
+        recognition.onresult =
+            event => {
+
+                const text =
+                    event.results[0][0].transcript;
+
+                $("searchInput").value =
+                    text;
+
+                $("searchInput").dispatchEvent(
+                    new Event("input")
                 );
 
-            input.value = text;
+            };
 
-            searchTools(text);
-        };
-}
+    }
+);
 
 
 /* =========================================================
-   FAVORITES
+   SETTINGS
    ========================================================= */
 
-function renderFavorites() {
+function loadSettings() {
 
-    const list =
-        document.getElementById(
-            "favoritesList"
+    const dark =
+        localStorage.getItem(
+            "leoCalcDarkMode"
         );
 
-    if (!list) return;
+    const hapticSetting =
+        localStorage.getItem(
+            "leoCalcHaptic"
+        );
 
-    if (!favorites.length) {
+    if ($("darkModeToggle")) {
 
-        list.innerHTML =
-            `
-            <div class="favoriteItem">
-                <h3>No Favorites Yet</h3>
-                <p style="
-                    color:#777d95;
-                    margin-top:5px;
-                    font-size:11px;
-                ">
-                    Favorite tools will appear here.
-                </p>
-            </div>
-            `;
+        $("darkModeToggle").checked =
+            dark !== "false";
 
-        return;
     }
 
-    list.innerHTML =
-        favorites.map(item => `
+    if ($("hapticToggle")) {
 
-            <div class="favoriteItem">
+        $("hapticToggle").checked =
+            hapticSetting !== "false";
 
-                <h3>
-                    ${escapeHTML(item.name)}
-                </h3>
+    }
 
-                <button
-                    class="smallButton"
-                    onclick="removeFavorite('${item.name}')"
-                >
-                    Remove
-                </button>
-
-            </div>
-
-        `).join("");
 }
 
 
-function addFavorite(name) {
-
-    if (
-        !favorites.some(
-            item => item.name === name
-        )
-    ) {
-
-        favorites.push({
-            name
-        });
+$("darkModeToggle")?.addEventListener(
+    "change",
+    event => {
 
         localStorage.setItem(
-            "leoCalcFavorites",
-            JSON.stringify(favorites)
+            "leoCalcDarkMode",
+            event.target.checked
         );
+
+        document.body.classList.toggle(
+            "light-mode",
+            !event.target.checked
+        );
+
     }
-
-    renderFavorites();
-}
+);
 
 
-function removeFavorite(name) {
+$("hapticToggle")?.addEventListener(
+    "change",
+    event => {
 
-    favorites =
-        favorites.filter(
-            item => item.name !== name
+        localStorage.setItem(
+            "leoCalcHaptic",
+            event.target.checked
         );
 
-    localStorage.setItem(
-        "leoCalcFavorites",
-        JSON.stringify(favorites)
-    );
-
-    renderFavorites();
-}
+    }
+);
 
 
 /* =========================================================
-   THEME
+   EXPORT HISTORY
    ========================================================= */
 
-function toggleTheme() {
+$("exportHistoryBtn")?.addEventListener(
+    "click",
+    () => {
 
-    document.body.classList.toggle(
-        "lightMode"
-    );
+        if (!history.length) {
 
-    localStorage.setItem(
-        "leoCalcTheme",
-        document.body.classList.contains(
-            "lightMode"
-        )
-            ? "light"
-            : "dark"
-    );
-}
+            alert(
+                "No history to export."
+            );
+
+            return;
+
+        }
+
+        const content =
+            history.map(
+                item =>
+                    `${item.date}\n` +
+                    `${item.expression} = ${item.result}\n`
+            ).join("\n");
+
+        const blob =
+            new Blob(
+                [content],
+                {
+                    type: "text/plain"
+                }
+            );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            "LeoCalc-History.txt";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+    }
+);
 
 
-if (
-    localStorage.getItem(
-        "leoCalcTheme"
-    ) === "light"
+/* =========================================================
+   CLEAR ALL DATA
+   ========================================================= */
+
+$("clearDataBtn")?.addEventListener(
+    "click",
+    () => {
+
+        haptic();
+
+        if (
+            !confirm(
+                "Clear all LeoCalc saved data?"
+            )
+        ) return;
+
+        localStorage.removeItem(
+            "leoCalcHistory"
+        );
+
+        localStorage.removeItem(
+            "leoCalcFavorites"
+        );
+
+        localStorage.removeItem(
+            "leoCalcNotes"
+        );
+
+        localStorage.removeItem(
+            "leoCalcDarkMode"
+        );
+
+        localStorage.removeItem(
+            "leoCalcHaptic"
+        );
+
+        history = [];
+        favorites = [];
+
+        renderHistory();
+        renderFavorites();
+
+        alert(
+            "LeoCalc data cleared."
+        );
+
+    }
+);
+
+
+/* =========================================================
+   FAVORITE HELPER
+   ========================================================= */
+
+function addFavoriteButton(
+    tool
 ) {
 
-    document.body.classList.add(
-        "lightMode"
-    );
+    const data =
+        TOOL_DATA[tool];
+
+    if (!data) return "";
+
+    const active =
+        favorites.includes(tool);
+
+    return `
+
+        <button
+            class="favorite-toggle"
+            data-favorite="${tool}">
+
+            ${active ? "★" : "☆"}
+
+        </button>
+
+    `;
+
+}
+
+
+document.addEventListener(
+    "click",
+    event => {
+
+        const button =
+            event.target.closest(
+                "[data-favorite]"
+            );
+
+        if (!button) return;
+
+        haptic();
+
+        toggleFavorite(
+            button.dataset.favorite
+        );
+
+    }
+);
+
+
+/* =========================================================
+   COMMON RESULT
+   ========================================================= */
+
+function showResult(
+    elementId,
+    value
+) {
+
+    const element =
+        $(elementId);
+
+    if (!element) return;
+
+    element.innerHTML = `
+
+        <div class="result-box">
+
+            <h3>Result</h3>
+
+            <div class="result-value">
+                ${escapeHTML(String(value))}
+            </div>
+
+        </div>
+
+    `;
+
 }
 
 
 /* =========================================================
-   KEYBOARD
+   CAPITALIZE
    ========================================================= */
 
-function handleKeyboard(event) {
+function capitalize(text) {
 
-    const page =
-        document.getElementById(
-            "calculatorPage"
-        );
+    return text
+        .charAt(0)
+        .toUpperCase() +
+        text.slice(1);
 
-    if (
-        !page ||
-        page.classList.contains("hidden")
-    ) return;
-
-    const key = event.key;
-
-    if (/^[0-9.]$/.test(key)) {
-
-        calcInput(key);
-
-    } else if (
-        ["+","-","*","/","(",")","%"].includes(key)
-    ) {
-
-        const converted =
-            key === "*"
-                ? "×"
-                : key === "/"
-                    ? "÷"
-                    : key;
-
-        calcInput(converted);
-
-    } else if (key === "Enter" || key === "=") {
-
-        calculateResult();
-
-    } else if (key === "Backspace") {
-
-        deleteCalc();
-
-    } else if (key === "Escape") {
-
-        clearCalc();
-    }
 }
 
 
@@ -3070,38 +3455,100 @@ function handleKeyboard(event) {
 function escapeHTML(value) {
 
     return String(value)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
 }
 
 
 /* =========================================================
-   ESC KEY
+   PREVENT MODAL BACKGROUND SCROLL
    ========================================================= */
 
-document.addEventListener(
-    "keydown",
-    event => {
+const observer =
+    new MutationObserver(
+        () => {
 
-        if (event.key === "Escape") {
+            if (
+                toolModal &&
+                !toolModal.classList.contains(
+                    "hidden"
+                )
+            ) {
 
-            closeToolModal();
-            closeMenu();
+                document.body.style.overflow =
+                    "hidden";
+
+            }
+
+            else {
+
+                document.body.style.overflow =
+                    "";
+
+            }
 
         }
+    );
+
+
+if (toolModal) {
+
+    observer.observe(
+        toolModal,
+        {
+            attributes: true,
+            attributeFilter: [
+                "class"
+            ]
+        }
+    );
+
+}
+
+
+/* =========================================================
+   CLEANUP
+   ========================================================= */
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        if (window._leoClock) {
+            clearInterval(
+                window._leoClock
+            );
+        }
+
+        stopStopwatch();
 
     }
 );
 
 
 /* =========================================================
-   CONSOLE
+   INITIAL READY
    ========================================================= */
 
 console.log(
-    "%cLeoCalc loaded successfully ⚡",
-    "font-size:18px;font-weight:bold;"
+    "LeoCalc v1.0 loaded successfully."
 );
