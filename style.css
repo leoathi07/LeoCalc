@@ -2121,9 +2121,3 @@ select:-webkit-autofill {
     z-index: 99999;
 }
 
-.splash-logo {
-    width: 180px;
-    height: 180px;
-    object-fit: contain;
-    display: block;
-}
