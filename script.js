@@ -1,19 +1,13 @@
 /* =========================================================
-   LeoCalc - Complete JavaScript
+   LEO CALC — COMPLETE UPDATED SCRIPT.JS
    All-in-One Engineering Calculator
+   Version 2.0
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
-    startSplash();
-    startClock();
-    loadHistory();
-    loadNotes();
-    getWeather();
-});
-
+"use strict";
 
 /* =========================================================
-   GLOBAL VARIABLES
+   GLOBAL STATE
 ========================================================= */
 
 let expression = "";
@@ -29,7 +23,38 @@ let savedNotes =
 let stopwatchInterval = null;
 let stopwatchSeconds = 0;
 
-let countdownInterval = null;
+let bigClockInterval = null;
+let mainClockInterval = null;
+
+let touchStartX = 0;
+
+window.leoWeatherData = null;
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    loadTheme();
+
+    startSplash();
+
+    startClock();
+
+    loadHistory();
+
+    loadNotes();
+
+    getWeather();
+
+    setupKeyboard();
+
+    setupMobileViewport();
+
+    console.log("LeoCalc initialized successfully 🚀");
+});
 
 
 /* =========================================================
@@ -38,20 +63,11 @@ let countdownInterval = null;
 
 function startSplash() {
 
-    const splash =
-        document.getElementById("splashScreen");
-
-    const main =
-        document.getElementById("mainApp");
-
-    const progress =
-        document.getElementById("progressBar");
-
-    const percent =
-        document.getElementById("loadingPercent");
-
-    const text =
-        document.getElementById("loadingText");
+    const splash = document.getElementById("splashScreen");
+    const main = document.getElementById("mainApp");
+    const progress = document.getElementById("progressBar");
+    const percent = document.getElementById("loadingPercent");
+    const text = document.getElementById("loadingText");
 
     if (!splash || !main) return;
 
@@ -70,9 +86,7 @@ function startSplash() {
 
         value += Math.floor(Math.random() * 5) + 2;
 
-        if (value > 100) {
-            value = 100;
-        }
+        if (value > 100) value = 100;
 
         if (progress) {
             progress.style.width = value + "%";
@@ -84,11 +98,10 @@ function startSplash() {
 
         if (text) {
 
-            const index =
-                Math.min(
-                    messages.length - 1,
-                    Math.floor(value / 18)
-                );
+            const index = Math.min(
+                messages.length - 1,
+                Math.floor(value / 18)
+            );
 
             text.textContent = messages[index];
         }
@@ -101,7 +114,6 @@ function startSplash() {
 
                 splash.style.opacity = "0";
                 splash.style.visibility = "hidden";
-
                 main.classList.remove("hidden");
 
             }, 450);
@@ -112,14 +124,19 @@ function startSplash() {
 
 
 /* =========================================================
-   CLOCK
+   MAIN CLOCK
 ========================================================= */
 
 function startClock() {
 
     updateClock();
 
-    setInterval(updateClock, 1000);
+    if (mainClockInterval) {
+        clearInterval(mainClockInterval);
+    }
+
+    mainClockInterval =
+        setInterval(updateClock, 1000);
 }
 
 
@@ -136,28 +153,22 @@ function updateClock() {
     if (clock) {
 
         clock.textContent =
-            now.toLocaleTimeString(
-                undefined,
-                {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit"
-                }
-            );
+            now.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            });
     }
 
     if (date) {
 
         date.textContent =
-            now.toLocaleDateString(
-                undefined,
-                {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric"
-                }
-            );
+            now.toLocaleDateString(undefined, {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            });
     }
 }
 
@@ -175,9 +186,15 @@ function openCalculator() {
 
     screen.classList.remove("hidden");
 
+    document.body.classList.add("calculator-open");
+
     document.body.style.overflow = "hidden";
 
+    updateDisplay();
+
     updateAnswerDisplay();
+
+    closeMenu();
 }
 
 
@@ -190,6 +207,8 @@ function closeCalculator() {
 
     screen.classList.add("hidden");
 
+    document.body.classList.remove("calculator-open");
+
     document.body.style.overflow = "";
 }
 
@@ -200,23 +219,85 @@ function closeCalculator() {
 
 function calcInput(value) {
 
+    if (value === undefined || value === null) return;
+
+    value = String(value);
+
+    /*
+       Prevent invalid duplicate decimal points
+    */
+
+    if (value === ".") {
+
+        const parts =
+            expression.split(/[+\-×÷*/()]/);
+
+        const current =
+            parts[parts.length - 1];
+
+        if (current.includes(".")) return;
+
+        if (!current) {
+            expression += "0";
+        }
+    }
+
+    /*
+       Prevent duplicate operators
+    */
+
+    if (["+", "-", "×", "÷", "*", "/"].includes(value)) {
+
+        if (!expression) {
+
+            if (value === "-") {
+                expression = "-";
+            }
+
+            updateDisplay();
+            return;
+        }
+
+        const last =
+            expression.slice(-1);
+
+        if (
+            ["+", "-", "×", "÷", "*", "/"].includes(last)
+        ) {
+            expression =
+                expression.slice(0, -1);
+        }
+    }
+
     expression += value;
 
     updateDisplay();
 }
 
 
+/* =========================================================
+   SCIENTIFIC FUNCTIONS
+========================================================= */
+
 function calcFunction(value) {
 
+    if (!value) return;
+
     if (value === "^2") {
+
+        if (!expression) return;
 
         expression += "^2";
 
     } else if (value === "^3") {
 
+        if (!expression) return;
+
         expression += "^3";
 
     } else if (value === "!") {
+
+        if (!expression) return;
 
         expression += "!";
 
@@ -228,6 +309,10 @@ function calcFunction(value) {
     updateDisplay();
 }
 
+
+/* =========================================================
+   DISPLAY
+========================================================= */
 
 function updateDisplay() {
 
@@ -241,17 +326,14 @@ function updateDisplay() {
         exp.textContent = expression;
     }
 
-    if (result) {
-
-        if (!expression) {
-            result.textContent = "0";
-        }
+    if (result && !expression) {
+        result.textContent = "0";
     }
 }
 
 
 /* =========================================================
-   CLEAR / DELETE
+   CLEAR
 ========================================================= */
 
 function clearCalc() {
@@ -274,7 +356,13 @@ function clearCalc() {
 }
 
 
+/* =========================================================
+   DELETE
+========================================================= */
+
 function deleteCalc() {
+
+    if (!expression) return;
 
     expression =
         expression.slice(0, -1);
@@ -291,10 +379,16 @@ function toggleSign() {
 
     if (!expression) return;
 
-    expression =
-        expression.startsWith("-")
-            ? expression.substring(1)
-            : "-" + expression;
+    if (expression.startsWith("-")) {
+
+        expression =
+            expression.substring(1);
+
+    } else {
+
+        expression =
+            "-" + expression;
+    }
 
     updateDisplay();
 }
@@ -306,25 +400,28 @@ function toggleSign() {
 
 function insertRandom() {
 
+    const random =
+        Math.random();
+
     expression +=
-        Math.random().toFixed(6);
+        random.toFixed(6);
 
     updateDisplay();
 }
 
 
 /* =========================================================
-   CALCULATOR ENGINE
+   CALCULATE
 ========================================================= */
 
 function calculateResult() {
 
-    if (!expression) return;
+    if (!expression.trim()) return;
+
+    const originalExpression =
+        expression;
 
     try {
-
-        const originalExpression =
-            expression;
 
         const result =
             evaluateExpression(expression);
@@ -335,7 +432,7 @@ function calculateResult() {
 
         answer = result;
 
-        expression =
+        const formatted =
             formatNumber(result);
 
         const exp =
@@ -351,8 +448,11 @@ function calculateResult() {
 
         if (resultBox) {
             resultBox.textContent =
-                formatNumber(result);
+                formatted;
         }
+
+        expression =
+            formatted;
 
         updateAnswerDisplay();
 
@@ -369,58 +469,92 @@ function calculateResult() {
         if (resultBox) {
             resultBox.textContent = "Error";
         }
+
+        console.error(
+            "Calculator error:",
+            error
+        );
     }
 }
 
 
 /* =========================================================
-   SAFE EXPRESSION EVALUATOR
+   EXPRESSION EVALUATOR
 ========================================================= */
 
 function evaluateExpression(input) {
 
     let exp =
-        input
+        String(input)
             .replaceAll("×", "*")
             .replaceAll("÷", "/")
             .replaceAll("−", "-")
             .replaceAll("π", "pi")
             .replaceAll("Ans", "ans")
-            .replaceAll(" ", "");
+            .replace(/\s+/g, "");
 
-    /*
+    if (!exp) {
+        throw new Error("Empty expression");
+    }
+
+
+    /* -----------------------------------------
        Factorial
-    */
+    ----------------------------------------- */
 
-    exp =
-        exp.replace(
-            /(\d+(?:\.\d+)?)!/g,
-            "factorial($1)"
-        );
+    let factorialSafety = 0;
+
+    while (exp.includes("!")) {
+
+        factorialSafety++;
+
+        if (factorialSafety > 20) {
+            throw new Error("Invalid factorial");
+        }
+
+        exp =
+            exp.replace(
+                /(\d+(?:\.\d+)?|\([^()]+\))!/,
+                (match, value) => {
+
+                    if (value.startsWith("(")) {
+
+                        return "factorial(" +
+                            evaluateExpression(value.slice(1, -1)) +
+                            ")";
+
+                    }
+
+                    return "factorial(" + value + ")";
+                }
+            );
+
+        if (!exp.includes("!")) break;
+    }
 
 
-    /*
+    /* -----------------------------------------
        Power
-    */
+    ----------------------------------------- */
 
     exp =
         exp.replaceAll("^", "**");
 
 
-    /*
+    /* -----------------------------------------
        Constants
-    */
+    ----------------------------------------- */
 
     exp =
         exp.replace(
-            /\bpi\b/g,
+            /\bpi\b/gi,
             "Math.PI"
         );
 
     exp =
         exp.replace(
             /\bans\b/gi,
-            "(" + answer + ")"
+            "(" + Number(answer) + ")"
         );
 
     exp =
@@ -430,55 +564,80 @@ function evaluateExpression(input) {
         );
 
 
-    /*
+    /* -----------------------------------------
        Functions
-    */
+    ----------------------------------------- */
 
     exp =
         exp.replace(
-            /\bsin\(/g,
+            /\bsin\(/gi,
             "trigSin("
         );
 
     exp =
         exp.replace(
-            /\bcos\(/g,
+            /\bcos\(/gi,
             "trigCos("
         );
 
     exp =
         exp.replace(
-            /\btan\(/g,
+            /\btan\(/gi,
             "trigTan("
         );
 
     exp =
         exp.replace(
-            /\blog\(/g,
+            /\blog\(/gi,
             "Math.log10("
         );
 
     exp =
         exp.replace(
-            /\bln\(/g,
+            /\bln\(/gi,
             "Math.log("
         );
 
     exp =
         exp.replace(
-            /\bsqrt\(/g,
+            /\bsqrt\(/gi,
             "Math.sqrt("
         );
 
 
-    /*
+    /* -----------------------------------------
        Security whitelist
-    */
+    ----------------------------------------- */
 
     if (
         !/^[0-9+\-*/%().,\sA-Za-z_]+$/.test(exp)
     ) {
         throw new Error("Invalid characters");
+    }
+
+
+    /*
+       Only approved function names
+    */
+
+    const allowedNames = [
+        "Math",
+        "factorial",
+        "trigSin",
+        "trigCos",
+        "trigTan"
+    ];
+
+    const identifiers =
+        exp.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+
+    for (const name of identifiers) {
+
+        if (!allowedNames.includes(name)) {
+            throw new Error(
+                "Unknown function"
+            );
+        }
     }
 
 
@@ -501,7 +660,7 @@ function evaluateExpression(input) {
 
 
 /* =========================================================
-   TRIG FUNCTIONS
+   ANGLE
 ========================================================= */
 
 function toRadians(value) {
@@ -541,12 +700,20 @@ function factorial(n) {
 
     n = Number(n);
 
-    if (n < 0 || !Number.isInteger(n)) {
-        throw new Error("Invalid factorial");
+    if (
+        !Number.isFinite(n) ||
+        n < 0 ||
+        !Number.isInteger(n)
+    ) {
+        throw new Error(
+            "Factorial requires a non-negative integer"
+        );
     }
 
     if (n > 170) {
-        throw new Error("Number too large");
+        throw new Error(
+            "Number too large"
+        );
     }
 
     let result = 1;
@@ -569,9 +736,13 @@ function formatNumber(value) {
         return "Error";
     }
 
-    if (Math.abs(value) >= 1e12 ||
-        (Math.abs(value) > 0 &&
-         Math.abs(value) < 1e-8)) {
+    if (
+        Math.abs(value) >= 1e12 ||
+        (
+            Math.abs(value) > 0 &&
+            Math.abs(value) < 1e-8
+        )
+    ) {
 
         return value.toExponential(8);
     }
@@ -592,6 +763,7 @@ function updateAnswerDisplay() {
         document.getElementById("answerValue");
 
     if (answerBox) {
+
         answerBox.textContent =
             formatNumber(answer);
     }
@@ -667,9 +839,9 @@ function switchCalcTab(tab, button) {
 function addHistory(exp, result) {
 
     calculationHistory.unshift({
-        expression: exp,
-        result: result,
-        time: new Date().toLocaleTimeString()
+        expression: String(exp),
+        result: Number(result),
+        time: new Date().toLocaleString()
     });
 
     calculationHistory =
@@ -696,12 +868,14 @@ function renderHistory() {
 
     if (!list) return;
 
-    if (calculationHistory.length === 0) {
+    if (!calculationHistory.length) {
 
         list.innerHTML =
-            `<p class="emptyHistory">
+            `
+            <p class="emptyHistory">
                 No calculations yet.
-            </p>`;
+            </p>
+            `;
 
         return;
     }
@@ -711,24 +885,28 @@ function renderHistory() {
             .map((item, index) => {
 
                 return `
-                <div style="
-                    padding:10px 0;
-                    border-bottom:1px solid rgba(255,255,255,.06);
-                    cursor:pointer;
-                "
-                onclick="useHistory(${index})">
+                <div
+                    class="historyItem"
+                    onclick="useHistory(${index})"
+                    style="
+                        padding:12px 0;
+                        border-bottom:1px solid rgba(255,255,255,.07);
+                        cursor:pointer;
+                    "
+                >
 
                     <div style="
-                        color:rgba(255,255,255,.4);
-                        font-size:9px;
+                        color:rgba(255,255,255,.42);
+                        font-size:10px;
+                        word-break:break-word;
                     ">
                         ${escapeHTML(item.expression)}
                     </div>
 
                     <strong style="
                         display:block;
-                        margin-top:3px;
-                        font-size:14px;
+                        margin-top:4px;
+                        font-size:15px;
                     ">
                         ${escapeHTML(
                             formatNumber(item.result)
@@ -737,9 +915,9 @@ function renderHistory() {
 
                     <small style="
                         color:rgba(255,255,255,.25);
-                        font-size:7px;
+                        font-size:8px;
                     ">
-                        ${item.time}
+                        ${escapeHTML(item.time || "")}
                     </small>
 
                 </div>
@@ -758,6 +936,14 @@ function useHistory(index) {
 
     expression =
         String(item.result);
+
+    const result =
+        document.getElementById("calcResult");
+
+    if (result) {
+        result.textContent =
+            formatNumber(item.result);
+    }
 
     updateDisplay();
 }
@@ -805,19 +991,33 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <p>Enter any two values.</p>
+                <p class="toolDescription">
+                    Enter any two values to calculate the third.
+                </p>
 
-                <input id="ohmV"
+                <input
+                    id="ohmV"
+                    class="toolInput"
                     type="number"
-                    placeholder="Voltage (V)">
+                    inputmode="decimal"
+                    placeholder="Voltage (V)"
+                >
 
-                <input id="ohmI"
+                <input
+                    id="ohmI"
+                    class="toolInput"
                     type="number"
-                    placeholder="Current (A)">
+                    inputmode="decimal"
+                    placeholder="Current (A)"
+                >
 
-                <input id="ohmR"
+                <input
+                    id="ohmR"
+                    class="toolInput"
                     type="number"
-                    placeholder="Resistance (Ω)">
+                    inputmode="decimal"
+                    placeholder="Resistance (Ω)"
+                >
 
                 <button
                     class="primaryButton"
@@ -825,7 +1025,8 @@ function engineeringTool(type) {
                     Calculate
                 </button>
 
-                <div id="ohmResult"
+                <div
+                    id="ohmResult"
                     class="resultBox">
                 </div>
 
@@ -841,13 +1042,21 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="powerV"
+                <input
+                    id="powerV"
+                    class="toolInput"
                     type="number"
-                    placeholder="Voltage (V)">
+                    inputmode="decimal"
+                    placeholder="Voltage (V)"
+                >
 
-                <input id="powerI"
+                <input
+                    id="powerI"
+                    class="toolInput"
                     type="number"
-                    placeholder="Current (A)">
+                    inputmode="decimal"
+                    placeholder="Current (A)"
+                >
 
                 <button
                     class="primaryButton"
@@ -855,7 +1064,8 @@ function engineeringTool(type) {
                     Calculate Power
                 </button>
 
-                <div id="powerResult"
+                <div
+                    id="powerResult"
                     class="resultBox">
                 </div>
 
@@ -871,13 +1081,29 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="res1"
-                    type="number"
-                    placeholder="Resistor 1 (Ω)">
+                <div class="toolFormula">
+                    Rₛ = R₁ + R₂
+                    &nbsp; | &nbsp;
+                    Rₚ = R₁R₂ / (R₁ + R₂)
+                </div>
 
-                <input id="res2"
+                <input
+                    id="res1"
+                    class="toolInput"
                     type="number"
-                    placeholder="Resistor 2 (Ω)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Resistor 1 (Ω)"
+                >
+
+                <input
+                    id="res2"
+                    class="toolInput"
+                    type="number"
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Resistor 2 (Ω)"
+                >
 
                 <button
                     class="primaryButton"
@@ -885,7 +1111,8 @@ function engineeringTool(type) {
                     Calculate
                 </button>
 
-                <div id="resResult"
+                <div
+                    id="resResult"
                     class="resultBox">
                 </div>
 
@@ -901,9 +1128,14 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="freqValue"
+                <input
+                    id="freqValue"
+                    class="toolInput"
                     type="number"
-                    placeholder="Frequency (Hz)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Frequency (Hz)"
+                >
 
                 <button
                     class="primaryButton"
@@ -911,7 +1143,8 @@ function engineeringTool(type) {
                     Calculate Wavelength
                 </button>
 
-                <div id="freqResult"
+                <div
+                    id="freqResult"
                     class="resultBox">
                 </div>
 
@@ -927,13 +1160,21 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="percentValue"
+                <input
+                    id="percentValue"
+                    class="toolInput"
                     type="number"
-                    placeholder="Value">
+                    inputmode="decimal"
+                    placeholder="Value"
+                >
 
-                <input id="percentRate"
+                <input
+                    id="percentRate"
+                    class="toolInput"
                     type="number"
-                    placeholder="Percentage (%)">
+                    inputmode="decimal"
+                    placeholder="Percentage (%)"
+                >
 
                 <button
                     class="primaryButton"
@@ -941,7 +1182,8 @@ function engineeringTool(type) {
                     Calculate
                 </button>
 
-                <div id="percentResult"
+                <div
+                    id="percentResult"
                     class="resultBox">
                 </div>
 
@@ -957,17 +1199,32 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="interestP"
+                <input
+                    id="interestP"
+                    class="toolInput"
                     type="number"
-                    placeholder="Principal">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Principal"
+                >
 
-                <input id="interestR"
+                <input
+                    id="interestR"
+                    class="toolInput"
                     type="number"
-                    placeholder="Rate (%)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Rate (%)"
+                >
 
-                <input id="interestT"
+                <input
+                    id="interestT"
+                    class="toolInput"
                     type="number"
-                    placeholder="Time (Years)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Time (Years)"
+                >
 
                 <button
                     class="primaryButton"
@@ -975,7 +1232,8 @@ function engineeringTool(type) {
                     Calculate
                 </button>
 
-                <div id="interestResult"
+                <div
+                    id="interestResult"
                     class="resultBox">
                 </div>
 
@@ -991,17 +1249,32 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="emiP"
+                <input
+                    id="emiP"
+                    class="toolInput"
                     type="number"
-                    placeholder="Loan Amount">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Loan Amount"
+                >
 
-                <input id="emiR"
+                <input
+                    id="emiR"
+                    class="toolInput"
                     type="number"
-                    placeholder="Annual Interest (%)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Annual Interest (%)"
+                >
 
-                <input id="emiN"
+                <input
+                    id="emiN"
+                    class="toolInput"
                     type="number"
-                    placeholder="Months">
+                    inputmode="numeric"
+                    min="1"
+                    placeholder="Months"
+                >
 
                 <button
                     class="primaryButton"
@@ -1009,7 +1282,8 @@ function engineeringTool(type) {
                     Calculate EMI
                 </button>
 
-                <div id="emiResult"
+                <div
+                    id="emiResult"
                     class="resultBox">
                 </div>
 
@@ -1025,13 +1299,23 @@ function engineeringTool(type) {
         html = `
             <div class="formTool">
 
-                <input id="bmiWeight"
+                <input
+                    id="bmiWeight"
+                    class="toolInput"
                     type="number"
-                    placeholder="Weight (kg)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Weight (kg)"
+                >
 
-                <input id="bmiHeight"
+                <input
+                    id="bmiHeight"
+                    class="toolInput"
                     type="number"
-                    placeholder="Height (cm)">
+                    inputmode="decimal"
+                    min="0"
+                    placeholder="Height (cm)"
+                >
 
                 <button
                     class="primaryButton"
@@ -1039,7 +1323,8 @@ function engineeringTool(type) {
                     Calculate BMI
                 </button>
 
-                <div id="bmiResult"
+                <div
+                    id="bmiResult"
                     class="resultBox">
                 </div>
 
@@ -1047,42 +1332,56 @@ function engineeringTool(type) {
         `;
     }
 
-
-    openToolModal(
-        title,
-        html
-    );
+    openToolModal(title, html);
 }
 
 
 /* =========================================================
-   OHM
+   OHM'S LAW
 ========================================================= */
 
 function calculateOhm() {
 
+    const vEl =
+        document.getElementById("ohmV");
+
+    const iEl =
+        document.getElementById("ohmI");
+
+    const rEl =
+        document.getElementById("ohmR");
+
+    const resultEl =
+        document.getElementById("ohmResult");
+
+    if (!vEl || !iEl || !rEl || !resultEl) return;
+
     const V =
-        Number(document.getElementById("ohmV").value);
+        parseFloat(vEl.value);
 
     const I =
-        Number(document.getElementById("ohmI").value);
+        parseFloat(iEl.value);
 
     const R =
-        Number(document.getElementById("ohmR").value);
+        parseFloat(rEl.value);
+
+    const hasV = Number.isFinite(V);
+    const hasI = Number.isFinite(I);
+    const hasR = Number.isFinite(R);
 
     let result = "";
 
-    if (V && I) {
+    if (hasV && hasI && I !== 0) {
 
         result =
             `Resistance = ${formatNumber(V / I)} Ω`;
 
-    } else if (V && R) {
+    } else if (hasV && hasR && R !== 0) {
 
         result =
             `Current = ${formatNumber(V / R)} A`;
 
-    } else if (I && R) {
+    } else if (hasI && hasR) {
 
         result =
             `Voltage = ${formatNumber(I * R)} V`;
@@ -1090,12 +1389,10 @@ function calculateOhm() {
     } else {
 
         result =
-            "Enter any two values.";
+            "Please enter any two valid values.";
     }
 
-    document.getElementById(
-        "ohmResult"
-    ).textContent = result;
+    resultEl.textContent = result;
 }
 
 
@@ -1106,47 +1403,91 @@ function calculateOhm() {
 function calculatePower() {
 
     const V =
-        Number(document.getElementById("powerV").value);
+        parseFloat(
+            document.getElementById("powerV")?.value
+        );
 
     const I =
-        Number(document.getElementById("powerI").value);
+        parseFloat(
+            document.getElementById("powerI")?.value
+        );
+
+    const resultEl =
+        document.getElementById("powerResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(V) ||
+        !Number.isFinite(I)
+    ) {
+
+        resultEl.textContent =
+            "Please enter voltage and current.";
+
+        return;
+    }
 
     const result =
         V * I;
 
-    document.getElementById(
-        "powerResult"
-    ).textContent =
+    resultEl.textContent =
         `Power = ${formatNumber(result)} W`;
 }
 
 
 /* =========================================================
-   RESISTORS
+   RESISTOR
 ========================================================= */
 
 function calculateResistors() {
 
     const R1 =
-        Number(document.getElementById("res1").value);
+        parseFloat(
+            document.getElementById("res1")?.value
+        );
 
     const R2 =
-        Number(document.getElementById("res2").value);
+        parseFloat(
+            document.getElementById("res2")?.value
+        );
 
-    if (!R1 || !R2) return;
+    const resultEl =
+        document.getElementById("resResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(R1) ||
+        !Number.isFinite(R2) ||
+        R1 <= 0 ||
+        R2 <= 0
+    ) {
+
+        resultEl.textContent =
+            "Enter two positive resistor values.";
+
+        return;
+    }
 
     const series =
         R1 + R2;
 
     const parallel =
-        (R1 * R2) / (R1 + R2);
+        (R1 * R2) /
+        (R1 + R2);
 
-    document.getElementById(
-        "resResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
-        Series = ${formatNumber(series)} Ω<br><br>
-        Parallel = ${formatNumber(parallel)} Ω
+        <strong>Series</strong>
+        <br>
+        ${formatNumber(series)} Ω
+
+        <br><br>
+
+        <strong>Parallel</strong>
+        <br>
+        ${formatNumber(parallel)} Ω
         `;
 }
 
@@ -1158,11 +1499,25 @@ function calculateResistors() {
 function calculateFrequency() {
 
     const frequency =
-        Number(
-            document.getElementById("freqValue").value
+        parseFloat(
+            document.getElementById("freqValue")?.value
         );
 
-    if (!frequency || frequency <= 0) return;
+    const resultEl =
+        document.getElementById("freqResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(frequency) ||
+        frequency <= 0
+    ) {
+
+        resultEl.textContent =
+            "Enter a frequency greater than 0.";
+
+        return;
+    }
 
     const speedOfLight =
         299792458;
@@ -1170,13 +1525,13 @@ function calculateFrequency() {
     const wavelength =
         speedOfLight / frequency;
 
-    document.getElementById(
-        "freqResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         Wavelength =
         ${formatNumber(wavelength)} m
+
         <br><br>
+
         Frequency =
         ${formatNumber(frequency)} Hz
         `;
@@ -1190,14 +1545,30 @@ function calculateFrequency() {
 function calculatePercentage() {
 
     const value =
-        Number(
-            document.getElementById("percentValue").value
+        parseFloat(
+            document.getElementById("percentValue")?.value
         );
 
     const rate =
-        Number(
-            document.getElementById("percentRate").value
+        parseFloat(
+            document.getElementById("percentRate")?.value
         );
+
+    const resultEl =
+        document.getElementById("percentResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(value) ||
+        !Number.isFinite(rate)
+    ) {
+
+        resultEl.textContent =
+            "Enter value and percentage.";
+
+        return;
+    }
 
     const amount =
         value * rate / 100;
@@ -1205,14 +1576,14 @@ function calculatePercentage() {
     const total =
         value + amount;
 
-    document.getElementById(
-        "percentResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
-        ${rate}% of value =
+        ${formatNumber(rate)}% of value =
         ${formatNumber(amount)}
+
         <br><br>
-        Value + ${rate}% =
+
+        Value + ${formatNumber(rate)}% =
         ${formatNumber(total)}
         `;
 }
@@ -1225,36 +1596,57 @@ function calculatePercentage() {
 function calculateInterest() {
 
     const P =
-        Number(
-            document.getElementById("interestP").value
+        parseFloat(
+            document.getElementById("interestP")?.value
         );
 
     const R =
-        Number(
-            document.getElementById("interestR").value
+        parseFloat(
+            document.getElementById("interestR")?.value
         );
 
     const T =
-        Number(
-            document.getElementById("interestT").value
+        parseFloat(
+            document.getElementById("interestT")?.value
         );
+
+    const resultEl =
+        document.getElementById("interestResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(P) ||
+        !Number.isFinite(R) ||
+        !Number.isFinite(T) ||
+        P < 0 ||
+        R < 0 ||
+        T < 0
+    ) {
+
+        resultEl.textContent =
+            "Enter valid principal, rate and time.";
+
+        return;
+    }
 
     const SI =
         P * R * T / 100;
 
     const CI =
-        P * Math.pow(
+        P *
+        Math.pow(
             1 + R / 100,
             T
         ) - P;
 
-    document.getElementById(
-        "interestResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         Simple Interest =
         ${formatNumber(SI)}
+
         <br><br>
+
         Compound Interest =
         ${formatNumber(CI)}
         `;
@@ -1268,19 +1660,40 @@ function calculateInterest() {
 function calculateEMI() {
 
     const P =
-        Number(
-            document.getElementById("emiP").value
+        parseFloat(
+            document.getElementById("emiP")?.value
         );
 
     const annualRate =
-        Number(
-            document.getElementById("emiR").value
+        parseFloat(
+            document.getElementById("emiR")?.value
         );
 
     const N =
-        Number(
-            document.getElementById("emiN").value
+        parseInt(
+            document.getElementById("emiN")?.value,
+            10
         );
+
+    const resultEl =
+        document.getElementById("emiResult");
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(P) ||
+        !Number.isFinite(annualRate) ||
+        !Number.isFinite(N) ||
+        P <= 0 ||
+        annualRate < 0 ||
+        N <= 0
+    ) {
+
+        resultEl.textContent =
+            "Enter valid loan amount, interest and months.";
+
+        return;
+    }
 
     const r =
         annualRate / 12 / 100;
@@ -1289,7 +1702,8 @@ function calculateEMI() {
 
     if (r === 0) {
 
-        emi = P / N;
+        emi =
+            P / N;
 
     } else {
 
@@ -1297,18 +1711,31 @@ function calculateEMI() {
             P *
             r *
             Math.pow(1 + r, N) /
-            (Math.pow(1 + r, N) - 1);
+            (
+                Math.pow(1 + r, N) - 1
+            );
     }
 
-    document.getElementById(
-        "emiResult"
-    ).innerHTML =
+    const total =
+        emi * N;
+
+    const interest =
+        total - P;
+
+    resultEl.innerHTML =
         `
         Monthly EMI =
         ₹${formatNumber(emi)}
+
         <br><br>
+
+        Total Interest =
+        ₹${formatNumber(interest)}
+
+        <br><br>
+
         Total Payment =
-        ₹${formatNumber(emi * N)}
+        ₹${formatNumber(total)}
         `;
 }
 
@@ -1320,39 +1747,48 @@ function calculateEMI() {
 function calculateBMI() {
 
     const weight =
-        Number(
-            document.getElementById("bmiWeight").value
+        parseFloat(
+            document.getElementById("bmiWeight")?.value
         );
 
-    const height =
-        Number(
-            document.getElementById("bmiHeight").value
-        ) / 100;
+    const heightCm =
+        parseFloat(
+            document.getElementById("bmiHeight")?.value
+        );
 
-    if (!weight || !height) return;
+    const resultEl =
+        document.getElementById("bmiResult");
 
-    const bmi =
-        weight / (height * height);
+    if (!resultEl) return;
 
-    let status;
+    if (
+        !Number.isFinite(weight) ||
+        !Number.isFinite(heightCm) ||
+        weight <= 0 ||
+        heightCm <= 0
+    ) {
 
-    if (bmi < 18.5) {
-        status = "Underweight";
-    } else if (bmi < 25) {
-        status = "Normal";
-    } else if (bmi < 30) {
-        status = "Overweight";
-    } else {
-        status = "Obesity";
+        resultEl.textContent =
+            "Enter valid height and weight.";
+
+        return;
     }
 
-    document.getElementById(
-        "bmiResult"
-    ).innerHTML =
+    const height =
+        heightCm / 100;
+
+    const bmi =
+        weight /
+        (height * height);
+
+    resultEl.innerHTML =
         `
         BMI = ${formatNumber(bmi)}
+
         <br><br>
-        Status = ${status}
+
+        BMI is a general screening measure and
+        should not be used alone to judge health.
         `;
 }
 
@@ -1371,37 +1807,38 @@ function openTimeTools() {
                 🕐 Time & Date
             </h3>
 
-            <div id="bigTime"
+            <div
+                id="bigTime"
                 style="
-                font-size:36px;
-                font-weight:800;
-                margin-bottom:8px;
-            ">
+                    font-size:36px;
+                    font-weight:800;
+                    margin-bottom:8px;
+                ">
                 00:00:00
             </div>
 
-            <div id="bigDate"
+            <div
+                id="bigDate"
                 style="
-                color:rgba(255,255,255,.5);
-                margin-bottom:20px;
-            ">
+                    color:rgba(255,255,255,.5);
+                    margin-bottom:20px;
+                ">
                 Loading...
             </div>
-
 
             <hr style="
                 border-color:rgba(255,255,255,.08);
                 margin:15px 0;
             ">
 
-
             <h4>Stopwatch</h4>
 
-            <div id="stopwatchDisplay"
+            <div
+                id="stopwatchDisplay"
                 style="
-                font-size:28px;
-                margin:10px 0;
-            ">
+                    font-size:28px;
+                    margin:10px 0;
+                ">
                 00:00:00
             </div>
 
@@ -1433,10 +1870,15 @@ function openTimeTools() {
 
     updateBigTime();
 
-    setInterval(
-        updateBigTime,
-        1000
-    );
+    if (bigClockInterval) {
+        clearInterval(bigClockInterval);
+    }
+
+    bigClockInterval =
+        setInterval(
+            updateBigTime,
+            1000
+        );
 }
 
 
@@ -1453,13 +1895,11 @@ function updateBigTime() {
     const now = new Date();
 
     if (time) {
-
         time.textContent =
             now.toLocaleTimeString();
     }
 
     if (date) {
-
         date.textContent =
             now.toLocaleDateString(
                 undefined,
@@ -1495,11 +1935,14 @@ function startStopwatch() {
 
 function pauseStopwatch() {
 
-    clearInterval(
-        stopwatchInterval
-    );
+    if (stopwatchInterval) {
 
-    stopwatchInterval = null;
+        clearInterval(
+            stopwatchInterval
+        );
+
+        stopwatchInterval = null;
+    }
 }
 
 
@@ -1549,7 +1992,6 @@ function pad(number) {
 
 /* =========================================================
    WEATHER
-   Open-Meteo - No API Key
 ========================================================= */
 
 function getWeather() {
@@ -1566,17 +2008,12 @@ function getWeather() {
     }
 
     navigator.geolocation.getCurrentPosition(
+
         position => {
 
-            const lat =
-                position.coords.latitude;
-
-            const lon =
-                position.coords.longitude;
-
             fetchWeather(
-                lat,
-                lon
+                position.coords.latitude,
+                position.coords.longitude
             );
         },
 
@@ -1591,7 +2028,8 @@ function getWeather() {
 
         {
             enableHighAccuracy: false,
-            timeout: 10000
+            timeout: 10000,
+            maximumAge: 300000
         }
     );
 }
@@ -1611,30 +2049,42 @@ async function fetchWeather(lat, lon) {
             await fetch(url);
 
         if (!response.ok) {
-            throw new Error("Weather error");
+            throw new Error(
+                "Weather request failed"
+            );
         }
 
         const data =
             await response.json();
 
+        if (!data.current) {
+            throw new Error(
+                "Invalid weather data"
+            );
+        }
+
         const current =
             data.current;
 
-        const weatherCode =
-            current.weather_code;
-
-        const weatherInfo =
-            weatherDescription(weatherCode);
+        const info =
+            weatherDescription(
+                current.weather_code
+            );
 
         setWeather(
-            weatherInfo.icon,
+            info.icon,
             `${Math.round(current.temperature_2m)}°C`,
-            weatherInfo.text
+            info.text
         );
 
         window.leoWeatherData = data;
 
     } catch (error) {
+
+        console.error(
+            "Weather error:",
+            error
+        );
 
         setWeather(
             "🌤️",
@@ -1779,7 +2229,7 @@ function openWeather() {
                         margin-top:8px;
                         color:rgba(255,255,255,.45);
                     ">
-                        Please allow location access.
+                        Allow location access to load weather.
                     </p>
 
                     <button
@@ -1828,20 +2278,20 @@ function openWeather() {
                 ">
 
                     <strong>
-                        ${new Date(
-                            daily.time[i]
-                        ).toLocaleDateString(
-                            undefined,
-                            {
-                                weekday:"short",
-                                day:"numeric"
-                            }
+                        ${escapeHTML(
+                            new Date(
+                                daily.time[i]
+                            ).toLocaleDateString(
+                                undefined,
+                                {
+                                    weekday:"short",
+                                    day:"numeric"
+                                }
+                            )
                         )}
                     </strong>
 
-                    <span style="
-                        margin-left:10px;
-                    ">
+                    <span style="margin-left:10px;">
                         ${d.icon}
                     </span>
 
@@ -1869,9 +2319,7 @@ function openWeather() {
                     padding:10px;
                 ">
 
-                    <div style="
-                        font-size:55px;
-                    ">
+                    <div style="font-size:55px;">
                         ${info.icon}
                     </div>
 
@@ -1887,7 +2335,7 @@ function openWeather() {
                     <div style="
                         color:rgba(255,255,255,.5);
                     ">
-                        ${info.text}
+                        ${escapeHTML(info.text)}
                     </div>
 
                 </div>
@@ -1909,8 +2357,7 @@ function openWeather() {
                     <div class="weatherStat">
                         🌬️ Wind<br>
                         <strong>
-                            ${current.wind_speed_10m}
-                            km/h
+                            ${current.wind_speed_10m} km/h
                         </strong>
                     </div>
 
@@ -1924,18 +2371,16 @@ function openWeather() {
                     </div>
 
                     <div class="weatherStat">
-                        📍 Location<br>
+                        📍 Coordinates<br>
                         <strong>
-                            ${data.latitude.toFixed(2)},
-                            ${data.longitude.toFixed(2)}
+                            ${Number(data.latitude).toFixed(2)},
+                            ${Number(data.longitude).toFixed(2)}
                         </strong>
                     </div>
 
                 </div>
 
-                <h3 style="
-                    margin-top:20px;
-                ">
+                <h3 style="margin-top:20px;">
                     5-Day Forecast
                 </h3>
 
@@ -1962,54 +2407,29 @@ function openConverter() {
 
         <div class="formTool">
 
-            <select id="convertCategory"
+            <select
+                id="convertCategory"
+                class="toolSelect"
                 onchange="changeConverter()">
 
-                <option value="length">
-                    Length
-                </option>
-
-                <option value="mass">
-                    Mass
-                </option>
-
-                <option value="temperature">
-                    Temperature
-                </option>
-
-                <option value="speed">
-                    Speed
-                </option>
-
-                <option value="area">
-                    Area
-                </option>
-
-                <option value="volume">
-                    Volume
-                </option>
-
-                <option value="data">
-                    Data Storage
-                </option>
-
-                <option value="energy">
-                    Energy
-                </option>
-
-                <option value="power">
-                    Power
-                </option>
-
-                <option value="pressure">
-                    Pressure
-                </option>
+                <option value="length">Length</option>
+                <option value="mass">Mass</option>
+                <option value="temperature">Temperature</option>
+                <option value="speed">Speed</option>
+                <option value="area">Area</option>
+                <option value="volume">Volume</option>
+                <option value="data">Data Storage</option>
+                <option value="energy">Energy</option>
+                <option value="power">Power</option>
+                <option value="pressure">Pressure</option>
 
             </select>
 
             <input
                 id="convertValue"
+                class="toolInput"
                 type="number"
+                inputmode="decimal"
                 placeholder="Enter value"
             >
 
@@ -2019,9 +2439,15 @@ function openConverter() {
                 gap:8px;
             ">
 
-                <select id="fromUnit"></select>
+                <select
+                    id="fromUnit"
+                    class="toolSelect">
+                </select>
 
-                <select id="toUnit"></select>
+                <select
+                    id="toUnit"
+                    class="toolSelect">
+                </select>
 
             </div>
 
@@ -2031,7 +2457,8 @@ function openConverter() {
                 Convert
             </button>
 
-            <div id="conversionResult"
+            <div
+                id="conversionResult"
                 class="resultBox">
             </div>
 
@@ -2046,6 +2473,10 @@ function openConverter() {
     changeConverter();
 }
 
+
+/* =========================================================
+   CONVERSION UNITS
+========================================================= */
 
 const conversionUnits = {
 
@@ -2123,12 +2554,16 @@ const conversionUnits = {
 };
 
 
+/* =========================================================
+   CHANGE CONVERTER
+========================================================= */
+
 function changeConverter() {
 
     const category =
         document.getElementById(
             "convertCategory"
-        ).value;
+        )?.value;
 
     const from =
         document.getElementById(
@@ -2140,23 +2575,21 @@ function changeConverter() {
             "toUnit"
         );
 
-    if (
-        category === "temperature"
-    ) {
+    if (!category || !from || !to) return;
 
-        from.innerHTML =
-            `
-            <option>°C</option>
-            <option>°F</option>
-            <option>K</option>
-            `;
+    if (category === "temperature") {
 
-        to.innerHTML =
-            `
-            <option>°C</option>
-            <option>°F</option>
-            <option>K</option>
-            `;
+        from.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+            <option value="K">K</option>
+        `;
+
+        to.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+            <option value="K">K</option>
+        `;
 
         return;
     }
@@ -2164,44 +2597,73 @@ function changeConverter() {
     const units =
         conversionUnits[category];
 
+    if (!units) return;
+
     from.innerHTML = "";
     to.innerHTML = "";
 
-    Object.keys(units)
-        .forEach(unit => {
+    Object.keys(units).forEach(unit => {
 
-            from.innerHTML +=
-                `<option>${unit}</option>`;
+        const option1 =
+            document.createElement("option");
 
-            to.innerHTML +=
-                `<option>${unit}</option>`;
-        });
+        option1.value = unit;
+        option1.textContent = unit;
+
+        const option2 =
+            document.createElement("option");
+
+        option2.value = unit;
+        option2.textContent = unit;
+
+        from.appendChild(option1);
+        to.appendChild(option2);
+    });
 }
 
+
+/* =========================================================
+   PERFORM CONVERSION
+========================================================= */
 
 function performConversion() {
 
     const category =
         document.getElementById(
             "convertCategory"
-        ).value;
+        )?.value;
 
     const value =
-        Number(
+        parseFloat(
             document.getElementById(
                 "convertValue"
-            ).value
+            )?.value
         );
 
     const from =
         document.getElementById(
             "fromUnit"
-        ).value;
+        )?.value;
 
     const to =
         document.getElementById(
             "toUnit"
-        ).value;
+        )?.value;
+
+    const resultEl =
+        document.getElementById(
+            "conversionResult"
+        );
+
+    if (!resultEl) return;
+
+    if (!Number.isFinite(value)) {
+
+        resultEl.textContent =
+            "Enter a valid value.";
+
+        return;
+    }
 
     let result;
 
@@ -2219,18 +2681,28 @@ function performConversion() {
         const units =
             conversionUnits[category];
 
+        if (!units || units[from] === undefined) {
+
+            resultEl.textContent =
+                "Conversion unavailable.";
+
+            return;
+        }
+
         result =
             value *
             units[from] /
             units[to];
     }
 
-    document.getElementById(
-        "conversionResult"
-    ).textContent =
+    resultEl.textContent =
         `${formatNumber(result)} ${to}`;
 }
 
+
+/* =========================================================
+   TEMPERATURE CONVERSION
+========================================================= */
 
 function convertTemperature(
     value,
@@ -2242,16 +2714,16 @@ function convertTemperature(
 
     if (from === "°C") {
         celsius = value;
-    }
-
-    if (from === "°F") {
+    } else if (from === "°F") {
         celsius =
             (value - 32) * 5 / 9;
-    }
-
-    if (from === "K") {
+    } else if (from === "K") {
         celsius =
             value - 273.15;
+    } else {
+        throw new Error(
+            "Invalid temperature unit"
+        );
     }
 
     if (to === "°C") {
@@ -2265,6 +2737,10 @@ function convertTemperature(
     if (to === "K") {
         return celsius + 273.15;
     }
+
+    throw new Error(
+        "Invalid temperature unit"
+    );
 }
 
 
@@ -2280,13 +2756,17 @@ function openMoneyTools() {
 
             <input
                 id="moneyAmount"
+                class="toolInput"
                 type="number"
+                inputmode="decimal"
                 placeholder="Amount"
             >
 
             <input
                 id="moneyGST"
+                class="toolInput"
                 type="number"
+                inputmode="decimal"
                 placeholder="GST %"
                 value="18"
             >
@@ -2297,26 +2777,29 @@ function openMoneyTools() {
                 Calculate GST
             </button>
 
-            <div id="gstResult"
+            <div
+                id="gstResult"
                 class="resultBox">
             </div>
-
 
             <hr style="
                 margin:20px 0;
                 border-color:rgba(255,255,255,.08);
             ">
 
-
             <input
                 id="discountPrice"
+                class="toolInput"
                 type="number"
+                inputmode="decimal"
                 placeholder="Original Price"
             >
 
             <input
                 id="discountRate"
+                class="toolInput"
                 type="number"
+                inputmode="decimal"
                 placeholder="Discount %"
             >
 
@@ -2326,7 +2809,8 @@ function openMoneyTools() {
                 Calculate Discount
             </button>
 
-            <div id="discountResult"
+            <div
+                id="discountResult"
                 class="resultBox">
             </div>
 
@@ -2343,18 +2827,38 @@ function openMoneyTools() {
 function calculateGST() {
 
     const amount =
-        Number(
+        parseFloat(
             document.getElementById(
                 "moneyAmount"
-            ).value
+            )?.value
         );
 
     const rate =
-        Number(
+        parseFloat(
             document.getElementById(
                 "moneyGST"
-            ).value
+            )?.value
         );
+
+    const resultEl =
+        document.getElementById(
+            "gstResult"
+        );
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(amount) ||
+        !Number.isFinite(rate) ||
+        amount < 0 ||
+        rate < 0
+    ) {
+
+        resultEl.textContent =
+            "Enter valid amount and GST rate.";
+
+        return;
+    }
 
     const gst =
         amount * rate / 100;
@@ -2362,9 +2866,7 @@ function calculateGST() {
     const total =
         amount + gst;
 
-    document.getElementById(
-        "gstResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         GST = ₹${formatNumber(gst)}
         <br><br>
@@ -2376,18 +2878,38 @@ function calculateGST() {
 function calculateDiscount() {
 
     const price =
-        Number(
+        parseFloat(
             document.getElementById(
                 "discountPrice"
-            ).value
+            )?.value
         );
 
     const rate =
-        Number(
+        parseFloat(
             document.getElementById(
                 "discountRate"
-            ).value
+            )?.value
         );
+
+    const resultEl =
+        document.getElementById(
+            "discountResult"
+        );
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isFinite(price) ||
+        !Number.isFinite(rate) ||
+        price < 0 ||
+        rate < 0
+    ) {
+
+        resultEl.textContent =
+            "Enter valid price and discount.";
+
+        return;
+    }
 
     const discount =
         price * rate / 100;
@@ -2395,9 +2917,7 @@ function calculateDiscount() {
     const finalPrice =
         price - discount;
 
-    document.getElementById(
-        "discountResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         Discount = ₹${formatNumber(discount)}
         <br><br>
@@ -2416,25 +2936,16 @@ function openStatistics() {
 
         <div class="formTool">
 
-            <p style="
-                color:rgba(255,255,255,.5);
-                margin-bottom:10px;
-            ">
+            <p class="toolDescription">
                 Enter numbers separated by commas.
             </p>
 
             <textarea
                 id="statsInput"
+                class="toolTextarea"
                 rows="5"
                 placeholder="10, 20, 30, 40, 50"
-                style="
-                width:100%;
-                padding:12px;
-                border-radius:12px;
-                background:rgba(255,255,255,.06);
-                color:white;
-                border:1px solid rgba(255,255,255,.08);
-            "></textarea>
+            ></textarea>
 
             <button
                 class="primaryButton"
@@ -2442,7 +2953,8 @@ function openStatistics() {
                 Calculate Statistics
             </button>
 
-            <div id="statsResult"
+            <div
+                id="statsResult"
                 class="resultBox">
             </div>
 
@@ -2461,24 +2973,37 @@ function calculateStatistics() {
     const input =
         document.getElementById(
             "statsInput"
-        ).value;
+        )?.value || "";
 
     const nums =
         input
             .split(",")
-            .map(Number)
+            .map(value => Number(value.trim()))
             .filter(Number.isFinite);
 
-    if (!nums.length) return;
+    const resultEl =
+        document.getElementById(
+            "statsResult"
+        );
+
+    if (!resultEl) return;
+
+    if (!nums.length) {
+
+        resultEl.textContent =
+            "Enter valid numbers separated by commas.";
+
+        return;
+    }
 
     const sorted =
         [...nums].sort(
-            (a,b) => a-b
+            (a, b) => a - b
         );
 
     const sum =
         nums.reduce(
-            (a,b) => a+b,
+            (a, b) => a + b,
             0
         );
 
@@ -2493,8 +3018,10 @@ function calculateStatistics() {
     const median =
         sorted.length % 2
             ? sorted[middle]
-            : (sorted[middle - 1] +
-               sorted[middle]) / 2;
+            : (
+                sorted[middle - 1] +
+                sorted[middle]
+            ) / 2;
 
     const variance =
         nums.reduce(
@@ -2507,20 +3034,28 @@ function calculateStatistics() {
     const sd =
         Math.sqrt(variance);
 
-    document.getElementById(
-        "statsResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         Count = ${nums.length}
+
         <br><br>
+
         Sum = ${formatNumber(sum)}
+
         <br><br>
+
         Mean = ${formatNumber(mean)}
+
         <br><br>
+
         Median = ${formatNumber(median)}
+
         <br><br>
+
         Variance = ${formatNumber(variance)}
+
         <br><br>
+
         Standard Deviation =
         ${formatNumber(sd)}
         `;
@@ -2539,8 +3074,10 @@ function openNumberSystem() {
 
             <input
                 id="numberInput"
+                class="toolInput"
                 type="text"
-                placeholder="Enter decimal number"
+                inputmode="numeric"
+                placeholder="Enter decimal integer"
             >
 
             <button
@@ -2549,7 +3086,8 @@ function openNumberSystem() {
                 Convert
             </button>
 
-            <div id="numberResult"
+            <div
+                id="numberResult"
                 class="resultBox">
             </div>
 
@@ -2565,40 +3103,59 @@ function openNumberSystem() {
 
 function convertNumberSystem() {
 
-    const value =
-        Number(
-            document.getElementById(
-                "numberInput"
-            ).value
-        );
+    const input =
+        document.getElementById(
+            "numberInput"
+        )?.value.trim();
 
-    if (!Number.isInteger(value)) {
-
+    const resultEl =
         document.getElementById(
             "numberResult"
-        ).textContent =
-            "Enter an integer.";
+        );
+
+    if (!resultEl) return;
+
+    if (!/^-?\d+$/.test(input)) {
+
+        resultEl.textContent =
+            "Enter a valid integer.";
 
         return;
     }
 
-    document.getElementById(
-        "numberResult"
-    ).innerHTML =
+    const value =
+        Number(input);
+
+    if (!Number.isSafeInteger(value)) {
+
+        resultEl.textContent =
+            "Number is too large.";
+
+        return;
+    }
+
+    resultEl.innerHTML =
         `
         Decimal = ${value}
+
         <br><br>
+
         Binary = ${value.toString(2)}
+
         <br><br>
+
         Octal = ${value.toString(8)}
+
         <br><br>
-        Hexadecimal = ${value.toString(16).toUpperCase()}
+
+        Hexadecimal =
+        ${value.toString(16).toUpperCase()}
         `;
 }
 
 
 /* =========================================================
-   SECURITY
+   SECURITY TOOLS
 ========================================================= */
 
 function openSecurity() {
@@ -2609,7 +3166,9 @@ function openSecurity() {
 
             <input
                 id="passwordLength"
+                class="toolInput"
                 type="number"
+                inputmode="numeric"
                 value="16"
                 min="4"
                 max="64"
@@ -2622,11 +3181,10 @@ function openSecurity() {
                 Generate Secure Password
             </button>
 
-            <div id="passwordResult"
+            <div
+                id="passwordResult"
                 class="resultBox"
-                style="
-                    word-break:break-all;
-                ">
+                style="word-break:break-all;">
             </div>
 
         </div>
@@ -2642,11 +3200,31 @@ function openSecurity() {
 function generatePassword() {
 
     const length =
-        Number(
+        parseInt(
             document.getElementById(
                 "passwordLength"
-            ).value
+            )?.value,
+            10
         );
+
+    const resultEl =
+        document.getElementById(
+            "passwordResult"
+        );
+
+    if (!resultEl) return;
+
+    if (
+        !Number.isInteger(length) ||
+        length < 4 ||
+        length > 64
+    ) {
+
+        resultEl.textContent =
+            "Password length must be 4–64.";
+
+        return;
+    }
 
     const chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
@@ -2656,24 +3234,38 @@ function generatePassword() {
 
     let password = "";
 
-    const randomArray =
-        new Uint32Array(length);
+    try {
 
-    crypto.getRandomValues(
-        randomArray
-    );
+        const randomArray =
+            new Uint32Array(length);
 
-    randomArray.forEach(number => {
+        crypto.getRandomValues(
+            randomArray
+        );
 
-        password +=
-            chars[
-                number % chars.length
-            ];
-    });
+        randomArray.forEach(number => {
 
-    document.getElementById(
-        "passwordResult"
-    ).textContent =
+            password +=
+                chars[
+                    number % chars.length
+                ];
+        });
+
+    } catch (error) {
+
+        for (let i = 0; i < length; i++) {
+
+            password +=
+                chars[
+                    Math.floor(
+                        Math.random() *
+                        chars.length
+                    )
+                ];
+        }
+    }
+
+    resultEl.textContent =
         password;
 }
 
@@ -2690,22 +3282,19 @@ function openNotes() {
 
             <input
                 id="noteTitle"
+                class="toolInput"
                 type="text"
+                maxlength="100"
                 placeholder="Note title"
             >
 
             <textarea
                 id="noteContent"
+                class="toolTextarea"
                 rows="6"
+                maxlength="5000"
                 placeholder="Write your note..."
-                style="
-                width:100%;
-                padding:12px;
-                border-radius:12px;
-                background:rgba(255,255,255,.06);
-                color:white;
-                border:1px solid rgba(255,255,255,.08);
-            "></textarea>
+            ></textarea>
 
             <button
                 class="primaryButton"
@@ -2713,8 +3302,7 @@ function openNotes() {
                 Save Note
             </button>
 
-            <div id="notesList">
-            </div>
+            <div id="notesList"></div>
 
         </div>
     `;
@@ -2733,34 +3321,40 @@ function saveNote() {
     const title =
         document.getElementById(
             "noteTitle"
-        ).value.trim();
+        )?.value.trim() || "";
 
     const content =
         document.getElementById(
             "noteContent"
-        ).value.trim();
+        )?.value.trim() || "";
 
     if (!title && !content) return;
 
     savedNotes.unshift({
+
         title,
         content,
+
         date:
             new Date().toLocaleString()
     });
+
+    savedNotes =
+        savedNotes.slice(0, 100);
 
     localStorage.setItem(
         "leoCalcNotes",
         JSON.stringify(savedNotes)
     );
 
-    document.getElementById(
-        "noteTitle"
-    ).value = "";
+    const titleEl =
+        document.getElementById("noteTitle");
 
-    document.getElementById(
-        "noteContent"
-    ).value = "";
+    const contentEl =
+        document.getElementById("noteContent");
+
+    if (titleEl) titleEl.value = "";
+    if (contentEl) contentEl.value = "";
 
     renderNotes();
 }
@@ -2826,19 +3420,19 @@ function renderNotes() {
                             margin-top:7px;
                             color:rgba(255,255,255,.25);
                         ">
-                            ${note.date}
+                            ${escapeHTML(note.date || "")}
                         </small>
 
                         <button
                             onclick="deleteNote(${index})"
                             style="
-                            margin-top:8px;
-                            padding:6px 9px;
-                            border-radius:8px;
-                            background:rgba(255,60,100,.1);
-                            color:#ff8aaa;
-                            font-size:8px;
-                        ">
+                                margin-top:8px;
+                                padding:6px 9px;
+                                border-radius:8px;
+                                background:rgba(255,60,100,.1);
+                                color:#ff8aaa;
+                                font-size:8px;
+                            ">
                             Delete
                         </button>
 
@@ -2850,6 +3444,13 @@ function renderNotes() {
 
 
 function deleteNote(index) {
+
+    if (
+        index < 0 ||
+        index >= savedNotes.length
+    ) {
+        return;
+    }
 
     savedNotes.splice(
         index,
@@ -2866,7 +3467,7 @@ function deleteNote(index) {
 
 
 /* =========================================================
-   QR TOOLS
+   QR
 ========================================================= */
 
 function openQR() {
@@ -2877,7 +3478,9 @@ function openQR() {
 
             <input
                 id="qrText"
+                class="toolInput"
                 type="text"
+                maxlength="2000"
                 placeholder="Enter text or URL"
             >
 
@@ -2887,11 +3490,12 @@ function openQR() {
                 Generate QR
             </button>
 
-            <div id="qrResult"
+            <div
+                id="qrResult"
                 style="
-                margin-top:20px;
-                text-align:center;
-            ">
+                    margin-top:20px;
+                    text-align:center;
+                ">
             </div>
 
         </div>
@@ -2909,26 +3513,40 @@ function generateQR() {
     const text =
         document.getElementById(
             "qrText"
-        ).value.trim();
+        )?.value.trim();
 
-    if (!text) return;
+    const resultEl =
+        document.getElementById(
+            "qrResult"
+        );
+
+    if (!resultEl) return;
+
+    if (!text) {
+
+        resultEl.textContent =
+            "Enter text or URL.";
+
+        return;
+    }
 
     const encoded =
         encodeURIComponent(text);
 
-    document.getElementById(
-        "qrResult"
-    ).innerHTML =
+    resultEl.innerHTML =
         `
         <img
             src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encoded}"
             alt="QR Code"
+            width="220"
+            height="220"
             style="
                 width:220px;
                 height:220px;
                 border-radius:12px;
                 background:white;
                 padding:8px;
+                max-width:100%;
             "
         >
         `;
@@ -2972,6 +3590,25 @@ function openToolModal(
     modal.classList.remove(
         "hidden"
     );
+
+    document.body.classList.add(
+        "modal-open"
+    );
+
+    setTimeout(() => {
+
+        const firstInput =
+            body.querySelector(
+                "input, textarea, select"
+            );
+
+        if (firstInput) {
+            firstInput.focus({
+                preventScroll: true
+            });
+        }
+
+    }, 100);
 }
 
 
@@ -2983,10 +3620,15 @@ function closeToolModal() {
         );
 
     if (modal) {
+
         modal.classList.add(
             "hidden"
         );
     }
+
+    document.body.classList.remove(
+        "modal-open"
+    );
 }
 
 
@@ -3013,6 +3655,10 @@ function openMenu() {
     if (overlay) {
         overlay.classList.add("open");
     }
+
+    document.body.classList.add(
+        "menu-open"
+    );
 }
 
 
@@ -3035,6 +3681,10 @@ function closeMenu() {
     if (overlay) {
         overlay.classList.remove("open");
     }
+
+    document.body.classList.remove(
+        "menu-open"
+    );
 }
 
 
@@ -3047,6 +3697,8 @@ function showHome() {
     closeCalculator();
 
     closeToolModal();
+
+    closeMenu();
 
     window.scrollTo({
         top: 0,
@@ -3100,7 +3752,9 @@ function showFavorites() {
 function searchTools(query) {
 
     query =
-        query.toLowerCase().trim();
+        String(query || "")
+            .toLowerCase()
+            .trim();
 
     const cards =
         document.querySelectorAll(
@@ -3115,7 +3769,8 @@ function searchTools(query) {
             ).toLowerCase();
 
         card.style.display =
-            !query || name.includes(query)
+            !query ||
+            name.includes(query)
                 ? ""
                 : "none";
     });
@@ -3146,7 +3801,9 @@ function startVoiceSearch() {
 
     recognition.lang = "en-IN";
 
-    recognition.start();
+    recognition.interimResults = false;
+
+    recognition.maxAlternatives = 1;
 
     recognition.onresult =
         event => {
@@ -3166,6 +3823,27 @@ function startVoiceSearch() {
                 searchTools(text);
             }
         };
+
+    recognition.onerror =
+        error => {
+
+            console.error(
+                "Voice search error:",
+                error
+            );
+        };
+
+    try {
+
+        recognition.start();
+
+    } catch (error) {
+
+        console.error(
+            "Voice recognition could not start:",
+            error
+        );
+    }
 }
 
 
@@ -3208,7 +3886,7 @@ function loadTheme() {
 
 
 /* =========================================================
-   PLACEHOLDER TOOL FUNCTIONS
+   ENGINEERING TAB
 ========================================================= */
 
 function openEngineering() {
@@ -3217,10 +3895,13 @@ function openEngineering() {
 
     setTimeout(() => {
 
-        const button =
+        const buttons =
             document.querySelectorAll(
                 ".calcTab"
-            )[1];
+            );
+
+        const button =
+            buttons[1];
 
         switchCalcTab(
             "engineering",
@@ -3235,101 +3916,140 @@ function openEngineering() {
    KEYBOARD SUPPORT
 ========================================================= */
 
-document.addEventListener(
-    "keydown",
-    event => {
+function setupKeyboard() {
 
-        if (
-            document
-                .getElementById("calculatorScreen")
-                ?.classList.contains("hidden")
-        ) {
-            return;
+    document.addEventListener(
+        "keydown",
+        event => {
+
+            const calculator =
+                document.getElementById(
+                    "calculatorScreen"
+                );
+
+            if (
+                !calculator ||
+                calculator.classList.contains("hidden")
+            ) {
+                return;
+            }
+
+            /*
+               Don't intercept typing inside
+               normal inputs/textareas.
+            */
+
+            const target =
+                event.target;
+
+            if (
+                target &&
+                (
+                    target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.tagName === "SELECT"
+                )
+            ) {
+                return;
+            }
+
+            const key =
+                event.key;
+
+            if (/^[0-9.]$/.test(key)) {
+
+                calcInput(key);
+
+            } else if (
+                ["+", "-", "*", "/", "%", "(", ")"]
+                    .includes(key)
+            ) {
+
+                calcInput(key);
+
+            } else if (
+                key === "Enter" ||
+                key === "="
+            ) {
+
+                event.preventDefault();
+
+                calculateResult();
+
+            } else if (
+                key === "Backspace"
+            ) {
+
+                deleteCalc();
+
+            } else if (
+                key === "Escape"
+            ) {
+
+                closeCalculator();
+                closeToolModal();
+                closeMenu();
+
+            } else if (
+                key.toLowerCase() === "c"
+            ) {
+
+                clearCalc();
+            }
         }
-
-        const key =
-            event.key;
-
-        if (
-            /^[0-9.]$/.test(key)
-        ) {
-
-            calcInput(key);
-
-        } else if (
-            ["+", "-", "*", "/", "%", "(", ")"]
-                .includes(key)
-        ) {
-
-            calcInput(key);
-
-        } else if (
-            key === "Enter" ||
-            key === "="
-        ) {
-
-            event.preventDefault();
-
-            calculateResult();
-
-        } else if (
-            key === "Backspace"
-        ) {
-
-            deleteCalc();
-
-        } else if (
-            key === "Escape"
-        ) {
-
-            closeCalculator();
-            closeToolModal();
-            closeMenu();
-
-        } else if (
-            key.toLowerCase() === "c"
-        ) {
-
-            clearCalc();
-        }
-    }
-);
-
-
-/* =========================================================
-   ESCAPE HTML
-========================================================= */
-
-function escapeHTML(value) {
-
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    );
 }
 
 
 /* =========================================================
-   RESTORE THEME
+   MOBILE VIEWPORT / KEYBOARD
 ========================================================= */
 
-loadTheme();
+function setupMobileViewport() {
+
+    if (!window.visualViewport) return;
+
+    const updateViewport =
+        () => {
+
+            const height =
+                window.visualViewport.height;
+
+            document.documentElement
+                .style
+                .setProperty(
+                    "--visual-height",
+                    `${height}px`
+                );
+        };
+
+    updateViewport();
+
+    window.visualViewport.addEventListener(
+        "resize",
+        updateViewport
+    );
+
+    window.visualViewport.addEventListener(
+        "scroll",
+        updateViewport
+    );
+}
 
 
 /* =========================================================
-   MOBILE SWIPE MENU
+   TOUCH SWIPE MENU
 ========================================================= */
-
-let touchStartX = 0;
 
 document.addEventListener(
     "touchstart",
     event => {
 
+        if (!event.touches.length) return;
+
         touchStartX =
             event.touches[0].clientX;
+
     },
     { passive: true }
 );
@@ -3338,6 +4058,8 @@ document.addEventListener(
 document.addEventListener(
     "touchend",
     event => {
+
+        if (!event.changedTouches.length) return;
 
         const touchEndX =
             event.changedTouches[0].clientX;
@@ -3359,8 +4081,73 @@ document.addEventListener(
 
             closeMenu();
         }
+
     },
     { passive: true }
+);
+
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+}
+
+
+/* =========================================================
+   MODAL CLEANUP
+========================================================= */
+
+window.addEventListener(
+    "resize",
+    () => {
+
+        /*
+           Stopwatch display is updated when
+           modal becomes visible again.
+        */
+
+        updateStopwatch();
+    }
+);
+
+
+/* =========================================================
+   GLOBAL ERROR PROTECTION
+========================================================= */
+
+window.addEventListener(
+    "error",
+    event => {
+
+        console.error(
+            "LeoCalc error:",
+            event.error || event.message
+        );
+    }
 );
 
 
@@ -3369,5 +4156,6 @@ document.addEventListener(
 ========================================================= */
 
 console.log(
-    "LeoCalc initialized successfully 🚀"
+    "%cLeoCalc v2.0 Ready 🚀",
+    "font-weight:bold;"
 );
