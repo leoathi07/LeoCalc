@@ -3163,3 +3163,35 @@ textarea:focus-visible {
         margin-top: 18px;
     }
    }
+/* ===== SPLASH FIX ===== */
+
+#splashScreen {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 999999 !important;
+    opacity: 1;
+    visibility: visible;
+    filter: none !important;
+    backdrop-filter: none !important;
+}
+
+#splashScreen.hide {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+#mainApp {
+    filter: none !important;
+    backdrop-filter: none !important;
+    opacity: 1 !important;
+}
+
+#mainApp.hidden {
+    display: none;
+}
+
+#mainApp:not(.hidden) {
+    display: block;
+   }
