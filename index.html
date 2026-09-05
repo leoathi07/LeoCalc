@@ -1,1040 +1,1021 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <meta name="theme-color" content="#080817">
+    <meta
+        name="viewport"
+        content="width=device-width,
+        initial-scale=1.0,
+        maximum-scale=1.0,
+        viewport-fit=cover"
+    >
 
-    <title>LeoCalc</title>
+    <meta name="theme-color" content="#070711">
+
+    <meta
+        name="description"
+        content="LeoCalc — All-in-One Engineering Calculator"
+    >
+
+    <title>LeoCalc — All-in-One Calculator</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<!-- =====================================================
-     SPLASH SCREEN
-     ===================================================== -->
+    <!-- =====================================================
+         TOAST
+    ====================================================== -->
 
-<div id="splashScreen" class="screen splash-screen">
+    <div id="toast" class="toast"></div>
 
-    <div class="splash-content">
 
-        <!-- YOUR LOGO ONLY ON SPLASH -->
-        <div id="splashScreen">
-    <img
-        src="./file_000000006ea082119ab6c4a98a7a7137.png"
-        alt="LeoCalc Logo"
-        class="splash-logo"
-    >
+    <!-- =====================================================
+         SPLASH SCREEN
+         LOGO IS USED ONLY HERE
+    ====================================================== -->
+
+    <section id="splash" class="splash">
+
+        <div class="splash-glow"></div>
+
+        <div class="splash-logo-wrap">
+
+            <img
+                src="./file_000000006ea082119ab6c4a98a7a7137.png"
+                class="splash-logo"
+                alt="LeoCalc"
+            >
+
         </div>
 
-        <h1 class="splash-title">LeoCalc</h1>
+        <h1>
+            <span>Leo</span>Calc
+        </h1>
 
-        <p class="splash-subtitle">
-            Smart Engineering Calculator
+        <p>
+            ENGINEERING • SCIENTIFIC • UTILITIES
         </p>
 
         <div class="splash-loader">
-            <span></span>
+            <i id="splashProgress"></i>
         </div>
 
-        <p class="splash-loading">
-            Loading...
-        </p>
-
-    </div>
-
-</div>
-
-
-<!-- =====================================================
-     MAIN APP
-     ===================================================== -->
-
-<div id="app" class="app hidden">
-
-    <!-- TOP BAR -->
-    <header class="topbar">
-
-        <button
-            class="icon-btn"
-            id="menuBtn"
-            aria-label="Menu">
-            ☰
-        </button>
-
-        <div class="brand">
-            <span class="brand-icon">L</span>
-            <span>LeoCalc</span>
-        </div>
-
-        <button
-            class="icon-btn"
-            id="searchBtn"
-            aria-label="Search">
-            🔍
-        </button>
-
-    </header>
-
-
-    <!-- =================================================
-         SEARCH
-         ================================================= -->
-
-    <section id="searchPanel" class="search-panel hidden">
-
-        <div class="search-box">
-
-            <input
-                type="text"
-                id="searchInput"
-                placeholder="Search tools..."
-                autocomplete="off"
-            >
-
-            <button id="voiceSearchBtn">
-                🎙️
-            </button>
-
-        </div>
-
-        <div id="searchResults" class="search-results"></div>
+        <small>
+            All-in-One Calculator
+        </small>
 
     </section>
 
 
-    <!-- =================================================
-         HOME PAGE
-         ================================================= -->
+    <!-- =====================================================
+         MAIN APP
+    ====================================================== -->
 
-    <main id="homePage" class="page active">
+    <div id="app" class="app hidden">
 
-        <!-- HERO -->
-        <section class="hero-card">
 
-            <div class="hero-glow"></div>
+        <!-- =================================================
+             TOP BAR
+        ================================================== -->
 
-            <div class="hero-content">
+        <header class="topbar">
 
-                <div class="hero-badge">
-                    PREMIUM CALCULATOR
+            <button
+                class="icon-btn"
+                id="menuBtn"
+                aria-label="Open menu"
+            >
+                ☰
+            </button>
+
+
+            <div class="brand">
+
+                <div class="brand-logo">
+                    LC
                 </div>
-
-                <h1>LeoCalc</h1>
-
-                <p>
-                    Everything you need in one powerful calculator.
-                </p>
-
-                <button
-                    class="primary-btn"
-                    id="openCalculatorBtn">
-                    Open Calculator
-                    <span>→</span>
-                </button>
-
-            </div>
-
-        </section>
-
-
-        <!-- QUICK TOOLS -->
-        <section class="section">
-
-            <div class="section-heading">
-                <div>
-                    <h2>Quick Tools</h2>
-                    <p>Popular engineering utilities</p>
-                </div>
-
-                <button
-                    class="text-btn"
-                    data-page="calculator">
-                    View All
-                </button>
-            </div>
-
-
-            <div class="tools-grid">
-
-                <button class="tool-card"
-                        data-tool="resistor">
-
-                    <div class="tool-icon resistor-icon">
-                        Ω
-                    </div>
-
-                    <strong>Resistor</strong>
-                    <small>Color Code</small>
-
-                </button>
-
-
-                <button class="tool-card"
-                        data-tool="frequency">
-
-                    <div class="tool-icon">
-                        ƒ
-                    </div>
-
-                    <strong>Frequency</strong>
-                    <small>Calculate</small>
-
-                </button>
-
-
-                <button class="tool-card"
-                        data-tool="percentage">
-
-                    <div class="tool-icon">
-                        %
-                    </div>
-
-                    <strong>Percentage</strong>
-                    <small>Calculate</small>
-
-                </button>
-
-
-                <button class="tool-card"
-                        data-tool="emi">
-
-                    <div class="tool-icon">
-                        ₹
-                    </div>
-
-                    <strong>EMI</strong>
-                    <small>Loan Calculator</small>
-
-                </button>
-
-            </div>
-
-        </section>
-
-
-        <!-- UTILITIES -->
-        <section class="section">
-
-            <div class="section-heading">
 
                 <div>
-                    <h2>Utilities</h2>
-                    <p>Everyday calculation tools</p>
+                    <b>LeoCalc</b>
+
+                    <small>
+                        ENGINEERING<br>
+                        CALCULATOR
+                    </small>
                 </div>
 
             </div>
 
 
-            <div class="utilities-grid">
-
-                <button
-                    class="utility-card"
-                    data-tool="time">
-
-                    <span>🕐</span>
-
-                    <div>
-                        <strong>Time & Date</strong>
-                        <small>Clock & Stopwatch</small>
-                    </div>
-
-                </button>
-
-
-                <button
-                    class="utility-card"
-                    data-tool="weather">
-
-                    <span>🌤️</span>
-
-                    <div>
-                        <strong>Live Weather</strong>
-                        <small>Current weather</small>
-                    </div>
-
-                </button>
-
-
-                <button
-                    class="utility-card"
-                    data-tool="converter">
-
-                    <span>🔄</span>
-
-                    <div>
-                        <strong>Converter</strong>
-                        <small>Unit conversion</small>
-                    </div>
-
-                </button>
-
-
-                <button
-                    class="utility-card"
-                    data-tool="money">
-
-                    <span>💰</span>
-
-                    <div>
-                        <strong>Money Tools</strong>
-                        <small>Quick calculations</small>
-                    </div>
-
-                </button>
-
-
-                <button
-                    class="utility-card"
-                    data-tool="statistics">
-
-                    <span>📊</span>
-
-                    <div>
-                        <strong>Statistics</strong>
-                        <small>Data analysis</small>
-                    </div>
-
-                </button>
-
-
-                <button
-                    class="utility-card"
-                    data-tool="number">
-
-                    <span>🔢</span>
-
-                    <div>
-                        <strong>Number System</strong>
-                        <small>Binary / Decimal</small>
-                    </div>
-
-                </button>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <!-- =================================================
-         CALCULATOR PAGE
-         ================================================= -->
-
-    <main id="calculatorPage" class="page">
-
-        <div class="page-header">
-
             <button
-                class="back-btn"
-                data-page="home">
-                ←
+                class="icon-btn"
+                id="themeBtn"
+                aria-label="Toggle theme"
+            >
+                ◐
             </button>
 
-            <div>
-                <h1>Engineering Calculator</h1>
-                <p>Powerful calculation tools</p>
-            </div>
+        </header>
 
-        </div>
 
+        <!-- =================================================
+             MAIN CONTENT
+        ================================================== -->
 
-        <!-- TABS -->
+        <main>
 
-        <div class="tabs">
 
-            <button
-                class="tab active"
-                data-tab="scientific">
-                Scientific
-            </button>
+            <!-- =================================================
+                 HOME PAGE
+            ================================================== -->
 
-            <button
-                class="tab"
-                data-tab="engineering">
-                Engineering
-            </button>
+            <section
+                id="homePage"
+                class="page active"
+            >
 
-            <button
-                class="tab"
-                data-tab="utilities">
-                Utilities
-            </button>
+                <!-- SEARCH -->
 
-        </div>
+                <div class="search-wrap">
 
-
-        <!-- SCIENTIFIC -->
-
-        <section
-            id="scientificTab"
-            class="tab-content active">
-
-            <div class="calculator">
-
-                <div class="display">
-
-                    <div
-                        id="expressionDisplay"
-                        class="expression">
-                    </div>
-
-                    <div
-                        id="resultDisplay"
-                        class="result">
-                        0
-                    </div>
-
-                </div>
-
-
-                <div class="calc-buttons">
-
-                    <button data-action="clear"
-                            class="danger">
-                        AC
-                    </button>
-
-                    <button data-action="delete">
-                        DEL
-                    </button>
-
-                    <button data-value="(">
-                        (
-                    </button>
-
-                    <button data-value=")">
-                        )
-                    </button>
-
-
-                    <button data-value="sin(">
-                        sin
-                    </button>
-
-                    <button data-value="cos(">
-                        cos
-                    </button>
-
-                    <button data-value="tan(">
-                        tan
-                    </button>
-
-                    <button data-value="/">
-                        ÷
-                    </button>
-
-
-                    <button data-value="7">7</button>
-                    <button data-value="8">8</button>
-                    <button data-value="9">9</button>
-
-                    <button data-value="*">
-                        ×
-                    </button>
-
-
-                    <button data-value="4">4</button>
-                    <button data-value="5">5</button>
-                    <button data-value="6">6</button>
-
-                    <button data-value="-">
-                        −
-                    </button>
-
-
-                    <button data-value="1">1</button>
-                    <button data-value="2">2</button>
-                    <button data-value="3">3</button>
-
-                    <button data-value="+">
-                        +
-                    </button>
-
-
-                    <button data-value="0"
-                            class="zero">
-                        0
-                    </button>
-
-                    <button data-value=".">
-                        .
-                    </button>
-
-                    <button data-action="calculate"
-                            class="equals">
-                        =
-                    </button>
-
-                </div>
-
-
-                <div class="scientific-extra">
-
-                    <button data-value="sqrt(">
-                        √
-                    </button>
-
-                    <button data-value="^2">
-                        x²
-                    </button>
-
-                    <button data-value="^3">
-                        x³
-                    </button>
-
-                    <button data-value="log(">
-                        log
-                    </button>
-
-                    <button data-value="ln(">
-                        ln
-                    </button>
-
-                    <button data-value="π">
-                        π
-                    </button>
-
-                    <button data-value="e">
-                        e
-                    </button>
-
-                    <button data-value="!">
-                        n!
-                    </button>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- ENGINEERING -->
-
-        <section
-            id="engineeringTab"
-            class="tab-content">
-
-            <div class="engineering-grid">
-
-                <button class="engineering-card"
-                        data-tool="resistor">
-
-                    <span>Ω</span>
-                    <strong>Resistor</strong>
-                    <small>Resistance color code</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="frequency">
-
-                    <span>ƒ</span>
-                    <strong>Frequency</strong>
-                    <small>Frequency calculations</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="percentage">
-
-                    <span>%</span>
-                    <strong>Percentage</strong>
-                    <small>Percentage calculator</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="interest">
-
-                    <span>📈</span>
-                    <strong>Interest</strong>
-                    <small>Simple & compound</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="emi">
-
-                    <span>₹</span>
-                    <strong>EMI</strong>
-                    <small>Loan EMI</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="bmi">
-
-                    <span>⚖️</span>
-                    <strong>BMI</strong>
-                    <small>Health calculation</small>
-
-                </button>
-
-            </div>
-
-        </section>
-
-
-        <!-- UTILITIES TAB -->
-
-        <section
-            id="utilitiesTab"
-            class="tab-content">
-
-            <div class="engineering-grid">
-
-                <button class="engineering-card"
-                        data-tool="time">
-
-                    <span>🕐</span>
-                    <strong>Time & Date</strong>
-                    <small>Clock & stopwatch</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="converter">
-
-                    <span>🔄</span>
-                    <strong>Converter</strong>
-                    <small>Unit converter</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="statistics">
-
-                    <span>📊</span>
-                    <strong>Statistics</strong>
-                    <small>Statistics calculator</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="number">
-
-                    <span>🔢</span>
-                    <strong>Number System</strong>
-                    <small>Base converter</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="security">
-
-                    <span>🔐</span>
-                    <strong>Security</strong>
-                    <small>Password generator</small>
-
-                </button>
-
-
-                <button class="engineering-card"
-                        data-tool="notes">
-
-                    <span>📝</span>
-                    <strong>Quick Notes</strong>
-                    <small>Save notes</small>
-
-                </button>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <!-- =================================================
-         HISTORY PAGE
-         ================================================= -->
-
-    <main id="historyPage" class="page">
-
-        <div class="page-header">
-
-            <div>
-                <h1>History</h1>
-                <p>Your recent calculations</p>
-            </div>
-
-            <button
-                id="clearHistoryBtn"
-                class="small-danger">
-                Clear
-            </button>
-
-        </div>
-
-        <div id="historyList" class="history-list"></div>
-
-    </main>
-
-
-    <!-- =================================================
-         FAVORITES PAGE
-         ================================================= -->
-
-    <main id="favoritesPage" class="page">
-
-        <div class="page-header">
-
-            <div>
-                <h1>Favorites</h1>
-                <p>Your saved tools</p>
-            </div>
-
-        </div>
-
-        <div
-            id="favoritesList"
-            class="favorites-list">
-        </div>
-
-    </main>
-
-
-    <!-- =================================================
-         SETTINGS PAGE
-         ================================================= -->
-
-    <main id="settingsPage" class="page">
-
-        <div class="page-header">
-
-            <div>
-                <h1>Settings</h1>
-                <p>Customize LeoCalc</p>
-            </div>
-
-        </div>
-
-
-        <div class="settings-list">
-
-            <div class="setting-item">
-
-                <div>
-                    <strong>Dark Mode</strong>
-                    <small>Use dark premium interface</small>
-                </div>
-
-                <label class="switch">
+                    <span>⌕</span>
 
                     <input
-                        type="checkbox"
-                        id="darkModeToggle"
-                        checked>
+                        id="toolSearch"
+                        type="search"
+                        placeholder="Search calculator, tools..."
+                        autocomplete="off"
+                    >
 
-                    <span></span>
+                    <button
+                        class="mic-btn"
+                        id="voiceBtn"
+                        title="Voice search"
+                    >
+                        🎙️
+                    </button>
 
-                </label>
-
-            </div>
-
-
-            <div class="setting-item">
-
-                <div>
-                    <strong>Haptic Feedback</strong>
-                    <small>Vibrate when pressing buttons</small>
                 </div>
 
-                <label class="switch">
 
-                    <input
-                        type="checkbox"
-                        id="hapticToggle"
-                        checked>
+                <!-- HERO CARD -->
 
-                    <span></span>
+                <section class="hero-card">
 
-                </label>
+                    <div>
 
-            </div>
+                        <div class="hero-badge">
+                            ⚡ POWERFUL • SMART • ENGINEERING
+                        </div>
 
+                        <h1>
+                            LeoCalc
+                        </h1>
+
+                        <p>
+                            Everything you need in one powerful calculator.
+                        </p>
+
+                        <button
+                            class="gradient-btn"
+                            id="openCalcBtn"
+                        >
+                            Open Calculator
+                            <b>→</b>
+                        </button>
+
+                    </div>
+
+
+                    <div class="hero-art">
+                        🧮
+                    </div>
+
+                </section>
+
+
+                <!-- TOOLS TITLE -->
+
+                <div class="section-title">
+
+                    <div>
+                        <span>ALL-IN-ONE</span>
+
+                        <h2>
+                            LeoCalc Tools
+                        </h2>
+                    </div>
+
+                </div>
+
+
+                <!-- HOME TOOLS GENERATED BY JS -->
+
+                <div
+                    id="homeTools"
+                    class="home-tool-list"
+                ></div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 ENGINEERING CALCULATOR PAGE
+            ================================================== -->
+
+            <section
+                id="engineeringPage"
+                class="page"
+            >
+
+                <div class="page-title">
+
+                    <span>
+                        LEOCALC
+                    </span>
+
+                    <h2>
+                        Engineering Calculator
+                    </h2>
+
+                </div>
+
+
+                <!-- CALCULATOR TABS -->
+
+                <div
+                    class="tabs"
+                    id="calcTabs"
+                >
+
+                    <button
+                        class="tab active"
+                        data-tab="scientific"
+                    >
+                        Scientific
+                    </button>
+
+                    <button
+                        class="tab"
+                        data-tab="engineering"
+                    >
+                        Engineering
+                    </button>
+
+                    <button
+                        class="tab"
+                        data-tab="utilities"
+                    >
+                        Utilities
+                    </button>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     SCIENTIFIC TAB
+                ================================================== -->
+
+                <div
+                    id="scientificTab"
+                    class="tab-panel"
+                >
+
+                    <!-- DISPLAY -->
+
+                    <div class="calc-display">
+
+                        <small id="calcExpression">
+                            0
+                        </small>
+
+                        <strong id="calcValue">
+                            0
+                        </strong>
+
+                        <div>
+
+                            <span class="angle-pill">
+                                DEG
+                            </span>
+
+                            <span>
+                                ANS:
+                                <b id="answerValue">
+                                    0
+                                </b>
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- SCIENTIFIC BUTTONS -->
+
+                    <div class="scientific-grid">
+
+                        <button data-scientific="sin">
+                            sin
+                        </button>
+
+                        <button data-scientific="cos">
+                            cos
+                        </button>
+
+                        <button data-scientific="tan">
+                            tan
+                        </button>
+
+                        <button data-scientific="log">
+                            log
+                        </button>
+
+                        <button data-scientific="ln">
+                            ln
+                        </button>
+
+                        <button data-scientific="sqrt">
+                            √
+                        </button>
+
+                        <button data-scientific="sq">
+                            x²
+                        </button>
+
+                        <button data-scientific="cube">
+                            x³
+                        </button>
+
+                        <button data-scientific="pow">
+                            xʸ
+                        </button>
+
+                        <button data-scientific="pi">
+                            π
+                        </button>
+
+                        <button data-scientific="e">
+                            e
+                        </button>
+
+                        <button data-scientific="fact">
+                            n!
+                        </button>
+
+                    </div>
+
+
+                    <!-- MAIN CALCULATOR KEYS -->
+
+                    <div
+                        class="calc-keys"
+                        id="calcKeys"
+                    ></div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     ENGINEERING TAB
+                ================================================== -->
+
+                <div
+                    id="engineeringTab"
+                    class="tab-panel hidden"
+                >
+
+                    <div
+                        class="engineering-grid"
+                        id="engineeringTools"
+                    ></div>
+
+
+                    <!-- HISTORY -->
+
+                    <div class="history-card">
+
+                        <div class="card-head">
+
+                            <h3>
+                                History
+                            </h3>
+
+                            <button
+                                id="clearHistoryBtn"
+                                class="small-btn"
+                            >
+                                Clear
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="historyList"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     UTILITIES TAB
+                ================================================== -->
+
+                <div
+                    id="utilitiesTab"
+                    class="tab-panel hidden"
+                >
+
+                    <div
+                        class="utilities-grid"
+                        id="utilityTools"
+                    ></div>
+
+
+                    <!-- HISTORY -->
+
+                    <div class="history-card">
+
+                        <div class="card-head">
+
+                            <h3>
+                                History
+                            </h3>
+
+                            <button
+                                id="clearHistoryBtn2"
+                                class="small-btn"
+                            >
+                                Clear
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="historyList2"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 FAVORITES PAGE
+            ================================================== -->
+
+            <section
+                id="favoritesPage"
+                class="page"
+            >
+
+                <div class="page-title">
+
+                    <span>
+                        SAVED
+                    </span>
+
+                    <h2>
+                        Favorites
+                    </h2>
+
+                </div>
+
+
+                <div
+                    id="favoritesList"
+                    class="tool-grid"
+                ></div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 HISTORY PAGE
+            ================================================== -->
+
+            <section
+                id="historyPage"
+                class="page"
+            >
+
+                <div class="page-title">
+
+                    <span>
+                        YOUR ACTIVITY
+                    </span>
+
+                    <h2>
+                        History
+                    </h2>
+
+                </div>
+
+
+                <div class="history-card">
+
+                    <div
+                        id="historyFull"
+                    ></div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 SETTINGS PAGE
+            ================================================== -->
+
+            <section
+                id="settingsPage"
+                class="page"
+            >
+
+                <div class="page-title">
+
+                    <span>
+                        PERSONALIZE
+                    </span>
+
+                    <h2>
+                        Settings
+                    </h2>
+
+                </div>
+
+
+                <!-- SETTINGS -->
+
+                <div class="settings-card">
+
+
+                    <!-- DARK MODE -->
+
+                    <div class="setting-row">
+
+                        <div>
+
+                            <b>
+                                Dark mode
+                            </b>
+
+                            <small>
+                                Use the premium dark interface
+                            </small>
+
+                        </div>
+
+                        <button
+                            class="switch on"
+                            id="darkSwitch"
+                            aria-label="Dark mode"
+                        ></button>
+
+                    </div>
+
+
+
+                    <!-- HAPTIC -->
+
+                    <div class="setting-row">
+
+                        <div>
+
+                            <b>
+                                Haptic feedback
+                            </b>
+
+                            <small>
+                                Small feedback on actions
+                            </small>
+
+                        </div>
+
+                        <button
+                            class="switch on"
+                            id="hapticSwitch"
+                            aria-label="Haptic feedback"
+                        ></button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- DATA SETTINGS -->
+
+                <div class="settings-card">
+
+                    <button
+                        class="wide-btn"
+                        id="exportBtn"
+                    >
+                        ⇩ Export History
+                    </button>
+
+
+                    <button
+                        class="wide-btn"
+                        id="clearAllBtn"
+                    >
+                        Clear App Data
+                    </button>
+
+                </div>
+
+
+                <!-- ABOUT -->
+
+                <div class="about-card">
+
+                    <div class="about-logo">
+                        LC
+                    </div>
+
+                    <h3>
+                        LeoCalc
+                    </h3>
+
+                    <p>
+                        All-in-One Calculator
+                    </p>
+
+                    <small>
+                        Version 1.0
+                    </small>
+
+                </div>
+
+            </section>
+
+        </main>
+
+
+
+        <!-- =====================================================
+             BOTTOM NAVIGATION
+        ====================================================== -->
+
+        <nav class="bottom-nav">
 
             <button
-                id="exportHistoryBtn"
-                class="setting-button">
-
-                <span>📤</span>
-
-                <div>
-                    <strong>Export History</strong>
-                    <small>Download calculation history</small>
-                </div>
-
+                class="nav-item active"
+                data-page="homePage"
+            >
+                ⌂
+                <small>
+                    Home
+                </small>
             </button>
 
 
             <button
-                id="clearDataBtn"
-                class="setting-button danger-setting">
-
-                <span>🗑️</span>
-
-                <div>
-                    <strong>Clear All Data</strong>
-                    <small>Delete saved LeoCalc data</small>
-                </div>
-
+                class="nav-item"
+                data-page="engineeringPage"
+            >
+                🧮
+                <small>
+                    Calc
+                </small>
             </button>
 
-        </div>
+
+            <button
+                class="nav-item"
+                id="savedNav"
+            >
+                ★
+                <small>
+                    Saved
+                </small>
+            </button>
 
 
-        <div class="about-box">
+            <button
+                class="nav-item"
+                data-page="settingsPage"
+            >
+                ☰
+                <small>
+                    More
+                </small>
+            </button>
 
-            <div class="about-logo">
-                L
-            </div>
+        </nav>
 
-            <h2>LeoCalc</h2>
-
-            <p>
-                Smart Engineering Calculator
-            </p>
-
-            <small>
-                Version 1.0
-            </small>
-
-        </div>
-
-    </main>
-
-
-    <!-- =================================================
-         SIDE MENU
-         ================================================= -->
-
-    <div
-        id="menuOverlay"
-        class="menu-overlay">
     </div>
 
 
+
+    <!-- =====================================================
+         SIDE MENU
+    ====================================================== -->
+
     <aside
         id="sideMenu"
-        class="side-menu">
+        class="side-menu"
+    >
 
-        <div class="menu-header">
+        <!-- SIDE HEADER -->
 
-            <div class="menu-brand">
-                <div class="menu-logo">
-                    L
-                </div>
+        <div class="side-header">
 
-                <div>
-                    <strong>LeoCalc</strong>
-                    <small>Premium Calculator</small>
-                </div>
+            <div class="side-brand-logo">
+                LC
             </div>
 
+
+            <div>
+
+                <b>
+                    LeoCalc
+                </b>
+
+                <small>
+                    All-in-One Calculator
+                </small>
+
+            </div>
+
+
             <button
-                id="closeMenuBtn"
-                class="close-btn">
+                class="close-side"
+                id="closeSide"
+                aria-label="Close menu"
+            >
                 ×
             </button>
 
         </div>
 
 
-        <nav class="menu-nav">
-
-            <button data-page="home">
-                🏠
-                <span>Home</span>
-            </button>
-
-            <button data-page="calculator">
-                🧮
-                <span>Engineering Calculator</span>
-            </button>
-
-            <button data-tool="time">
-                🕐
-                <span>Time & Date</span>
-            </button>
-
-            <button data-tool="weather">
-                🌤️
-                <span>Weather</span>
-            </button>
-
-            <button data-tool="money">
-                💰
-                <span>Money Tools</span>
-            </button>
-
-            <button data-tool="converter">
-                🔄
-                <span>Converters</span>
-            </button>
-
-            <button data-tool="statistics">
-                📊
-                <span>Statistics</span>
-            </button>
-
-            <button data-tool="number">
-                🔢
-                <span>Number System</span>
-            </button>
-
-            <button data-tool="security">
-                🔐
-                <span>Security</span>
-            </button>
-
-            <button data-tool="notes">
-                📝
-                <span>Notes</span>
-            </button>
-
-            <button data-page="favorites">
-                ⭐
-                <span>Favorites</span>
-            </button>
-
-            <button data-page="history">
-                🕘
-                <span>History</span>
-            </button>
-
-            <button data-page="settings">
-                ⚙️
-                <span>Settings</span>
-            </button>
-
-        </nav>
+        <div class="side-line"></div>
 
 
-        <div class="menu-footer">
-            LeoCalc Version 1.0
+
+        <!-- HOME -->
+
+        <button
+            class="side-item active"
+            data-side="homePage"
+        >
+            🏠
+            <span>
+                Home
+            </span>
+        </button>
+
+
+
+        <!-- CALCULATOR -->
+
+        <button
+            class="side-item"
+            data-side="engineeringPage"
+        >
+            🧮
+            <span>
+                Engineering Calculator
+            </span>
+        </button>
+
+
+
+        <!-- TIME -->
+
+        <button
+            class="side-item"
+            data-tool="time"
+        >
+            🕐
+            <span>
+                Time &amp; Date
+            </span>
+        </button>
+
+
+
+        <!-- WEATHER -->
+
+        <button
+            class="side-item"
+            data-tool="weather"
+        >
+            🌤️
+            <span>
+                Weather
+            </span>
+        </button>
+
+
+
+        <!-- MONEY -->
+
+        <button
+            class="side-item"
+            data-tool="money"
+        >
+            💰
+            <span>
+                Money Tools
+            </span>
+        </button>
+
+
+
+        <!-- CONVERTER -->
+
+        <button
+            class="side-item"
+            data-tool="converter"
+        >
+            📐
+            <span>
+                Converters
+            </span>
+        </button>
+
+
+
+        <!-- ENGINEERING -->
+
+        <button
+            class="side-item"
+            data-tool="engineering"
+        >
+            ⚡
+            <span>
+                Engineering
+            </span>
+        </button>
+
+
+
+        <!-- STATISTICS -->
+
+        <button
+            class="side-item"
+            data-tool="statistics"
+        >
+            📊
+            <span>
+                Statistics
+            </span>
+        </button>
+
+
+
+        <!-- NUMBER SYSTEM -->
+
+        <button
+            class="side-item"
+            data-tool="number"
+        >
+            🔢
+            <span>
+                Number System
+            </span>
+        </button>
+
+
+
+        <!-- SECURITY -->
+
+        <button
+            class="side-item"
+            data-tool="security"
+        >
+            🛡️
+            <span>
+                Security
+            </span>
+        </button>
+
+
+
+        <!-- NOTES -->
+
+        <button
+            class="side-item"
+            data-tool="notes"
+        >
+            📝
+            <span>
+                Notes
+            </span>
+        </button>
+
+
+
+        <!-- FOOTER -->
+
+        <div class="side-footer">
+
+            <span>
+                LeoCalc
+            </span>
+
+            <span>
+                Version 1.0
+            </span>
+
         </div>
 
     </aside>
 
 
-    <!-- =================================================
-         BOTTOM NAVIGATION
-         ================================================= -->
 
-    <nav class="bottom-nav">
+    <!-- =====================================================
+         SIDE MENU BACKDROP
+    ====================================================== -->
 
-        <button
-            class="bottom-item active"
-            data-page="home">
-
-            <span>⌂</span>
-            <small>Home</small>
-
-        </button>
+    <div
+        id="menuBackdrop"
+        class="menu-backdrop"
+    ></div>
 
 
-        <button
-            class="bottom-item"
-            data-page="calculator">
 
-            <span>⌨</span>
-            <small>Calculate</small>
+    <!-- =====================================================
+         TOOL MODAL
+    ====================================================== -->
 
-        </button>
+    <div
+        id="toolModal"
+        class="modal hidden"
+    >
 
-
-        <button
-            class="bottom-item"
-            data-page="favorites">
-
-            <span>★</span>
-            <small>Favorites</small>
-
-        </button>
+        <div class="modal-sheet">
 
 
-        <button
-            class="bottom-item"
-            data-page="history">
+            <!-- MODAL HEADER -->
 
-            <span>◷</span>
-            <small>History</small>
+            <div class="modal-head">
 
-        </button>
-
-
-        <button
-            class="bottom-item"
-            data-page="settings">
-
-            <span>⚙</span>
-            <small>Settings</small>
-
-        </button>
-
-    </nav>
-
-</div>
+                <button
+                    class="back-btn"
+                    id="modalBack"
+                    aria-label="Back"
+                >
+                    ←
+                </button>
 
 
-<!-- =====================================================
-     TOOL MODAL
-     ===================================================== -->
+                <div>
 
-div id="toolModal"
-    class="modal-overlay hidden">
+                    <span id="modalIcon"></span>
 
-    <div class="modal">
+                    <h2 id="modalTitle"></h2>
 
-        <div class="modal-header">
+                </div>
 
-            <div>
-                <h2 id="modalTitle">
-                    Tool
-                </h2>
 
-                <p id="modalSubtitle">
-                    Calculator
-                </p>
+                <button
+                    class="close-btn"
+                    id="modalClose"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
             </div>
 
-            <button
-                id="closeModalBtn"
-                class="close-btn">
-                ×
-            </button>
 
-        </div>
+            <!-- TOOL CONTENT -->
 
+            <div
+                id="toolBody"
+            ></div>
 
-        <div
-            id="modalBody"
-            class="modal-body">
         </div>
 
     </div>
 
-</div>
 
 
-<script src="script.js"></script>
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
+
+    <script src="script.js"></script>
 
 </body>
-            </html>
+    </html>
