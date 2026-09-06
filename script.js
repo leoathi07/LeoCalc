@@ -1,152 +1,193 @@
+/* =========================================================
+   LEO CALC — COMPLETE SCRIPT.JS
+   Works with:
+   index.html
+   style.css
+   backend.js
+
+   No Login
+   LocalStorage Backend
+   ========================================================= */
+
 "use strict";
 
 /* =========================================================
-   LEOCALC COMPLETE JAVASCRIPT
-========================================================= */
+   GLOBAL STATE
+   ========================================================= */
 
-
-/* =========================================================
-   STATE
-========================================================= */
-
+let currentPage = "home";
+let currentCalculator = "scientific";
 let currentExpression = "";
-let lastAnswer = 0;
+let currentResult = "0";
 
-let history =
-    JSON.parse(localStorage.getItem("leoCalcHistory") || "[]");
+let notes = [];
+let history = [];
+let favorites = [];
 
-let favorites =
-    JSON.parse(localStorage.getItem("leoCalcFavorites") || "[]");
+let stopwatchInterval = null;
+let stopwatchStart = 0;
+let stopwatchElapsed = 0;
 
-let notes =
-    JSON.parse(localStorage.getItem("leoCalcNotes") || "[]");
-
-let haptic =
-    localStorage.getItem("leoCalcHaptic") !== "false";
-
+let editingNoteId = null;
 
 /* =========================================================
-   ELEMENTS
-========================================================= */
+   DOM HELPERS
+   ========================================================= */
 
-const splash = document.getElementById("splashScreen");
-const app = document.getElementById("app");
-const loadingProgress =
-    document.getElementById("loadingProgress");
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
 
-const displayValue =
-    document.getElementById("displayValue");
+function getElement(id) {
+    return document.getElementById(id);
+}
 
-const expression =
-    document.getElementById("expression");
-
-const answer =
-    document.getElementById("answer");
-
-const toolModal =
-    document.getElementById("toolModal");
-
-const modalTitle =
-    document.getElementById("modalTitle");
-
-const modalIcon =
-    document.getElementById("modalIcon");
-
-const modalContent =
-    document.getElementById("modalContent");
-
-const toast =
-    document.getElementById("toast");
-
+function safeText(value) {
+    return String(value ?? "");
+}
 
 /* =========================================================
-   SPLASH
-========================================================= */
+   INITIALIZATION
+   ========================================================= */
 
-let progress = 0;
+document.addEventListener("DOMContentLoaded", () => {
+    initializeApp();
+});
 
-const loadingTimer = setInterval(() => {
-
-    progress += Math.random() * 8 + 4;
-
-    if (progress >= 100) {
-        progress = 100;
-        clearInterval(loadingTimer);
-
-        setTimeout(() => {
-
-            splash.classList.add("hidden");
-            app.classList.remove("hidden");
-
-        }, 500);
-    }
-
-    loadingProgress.style.width = progress + "%";
-
-}, 130);
-
-
-/* =========================================================
-   TOAST
-========================================================= */
-
-function showToast(message) {
-
-    toast.textContent = message;
-    toast.classList.add("show");
+function initializeApp() {
+    loadBackendData();
+    setupNavigation();
+    setupMenu();
+    setupSearch();
+    setupCalculator();
+    setupTools();
+    setupNotes();
+    setupHistory();
+    setupFavorites();
+    setupSettings();
+    setupGlobalButtons();
+    updateDashboard();
+    renderHistory();
+    renderFavorites();
+    renderNotes();
+    applySavedSettings();
 
     setTimeout(() => {
-        toast.classList.remove("show");
-    }, 1800);
-}
+        const splash = getElement("splashScreen");
 
+        if (splash) {
+            splash.classList.add("hide");
+
+            setTimeout(() => {
+                splash.remove();
+            }, 700);
+        }
+    }, 2200);
+}
 
 /* =========================================================
-   HAPTIC
-========================================================= */
+   BACKEND DATA
+   ========================================================= */
 
-function vibrate() {
+function loadBackendData() {
+    try {
+        if (window.LeoCalcBackend) {
+            history = LeoCalcBackend.getHistory() || [];
+            favorites = LeoCalcBackend.getFavorites() || [];
+            notes = LeoCalcBackend.getNotes() || [];
+        } else {
+            history = JSON.parse(
+                localStorage.getItem("leocalc_history") || "[]"
+            );
 
-    if (
-        haptic &&
-        navigator.vibrate
-    ) {
-        navigator.vibrate(12);
+            favorites = JSON.parse(
+                localStorage.getItem("leocalc_favorites") || "[]"
+            );
+
+            notes = JSON.parse(
+                localStorage.getItem("leocalc_notes") || "[]"
+            );
+        }
+    } catch (error) {
+        console.error("Backend loading error:", error);
+
+        history = [];
+        favorites = [];
+        notes = [];
     }
 }
-
 
 /* =========================================================
    NAVIGATION
-========================================================= */
+   ========================================================= */
 
-function showPage(pageId) {
+function setupNavigation() {
+    $$(".menu-item").forEach((item) => {
+        item.addEventListener("click", () => {
+            const page = item.dataset.page;
 
-    document
-        .querySelectorAll(".page")
-        .forEach(page => {
-            page.classList.remove("active");
+            if (page) {
+                navigateTo(page);
+            }
+
+            closeMenu();
         });
+    });
 
-    const page =
-        document.getElementById(pageId);
+    $$(".nav-item").forEach((item) => {
+        item.addEventListener("click", () => {
+            const page = item.dataset.page;
 
-    if (page) {
-        page.classList.add("active");
+            if (page) {
+                navigateTo(page);
+            }
+        });
+    });
+}
+
+function navigateTo(pageName) {
+    if (!pageName) return;
+
+    currentPage = pageName;
+
+    $$(".page").forEach((page) => {
+        page.classList.remove("active");
+    });
+
+    const targetPage = getElement(pageName);
+
+    if (targetPage) {
+        targetPage.classList.add("active");
     }
 
-    document
-        .querySelectorAll(".nav-button")
-        .forEach(btn => {
+    $$(".menu-item").forEach((item) => {
+        item.classList.toggle(
+            "active",
+            item.dataset.page === pageName
+        );
+    });
 
-            btn.classList.toggle(
-                "active",
-                btn.dataset.page === pageId
-            );
+    $$(".nav-item").forEach((item) => {
+        item.classList.toggle(
+            "active",
+            item.dataset.page === pageName
+        );
+    });
 
-        });
+    if (pageName === "history") {
+        renderHistory();
+    }
 
-    closeSideMenu();
+    if (pageName === "favorites") {
+        renderFavorites();
+    }
+
+    if (pageName === "notes") {
+        renderNotes();
+    }
+
+    if (pageName === "home") {
+        updateDashboard();
+    }
 
     window.scrollTo({
         top: 0,
@@ -154,2037 +195,2858 @@ function showPage(pageId) {
     });
 }
 
-
-document
-    .querySelectorAll(".nav-button[data-page]")
-    .forEach(button => {
-
-        button.addEventListener("click", () => {
-
-            vibrate();
-
-            showPage(button.dataset.page);
-
-        });
-
-    });
-
-
-document
-    .querySelectorAll(".side-items button[data-page]")
-    .forEach(button => {
-
-        button.addEventListener("click", () => {
-
-            showPage(button.dataset.page);
-
-        });
-
-    });
-
-
-document
-    .getElementById("openCalculator")
-    .addEventListener("click", () => {
-
-        vibrate();
-        showPage("calculatorPage");
-
-    });
-
-
 /* =========================================================
    SIDE MENU
-========================================================= */
+   ========================================================= */
 
-const sideMenu =
-    document.getElementById("sideMenu");
+function setupMenu() {
+    const menuButton = getElement("menuButton");
+    const closeButton = getElement("closeMenu");
+    const overlay = getElement("menuOverlay");
 
-const menuOverlay =
-    document.getElementById("menuOverlay");
+    if (menuButton) {
+        menuButton.addEventListener("click", openMenu);
+    }
 
-function openSideMenu() {
+    if (closeButton) {
+        closeButton.addEventListener("click", closeMenu);
+    }
 
-    sideMenu.classList.add("active");
-    menuOverlay.classList.add("active");
-
+    if (overlay) {
+        overlay.addEventListener("click", closeMenu);
+    }
 }
 
-function closeSideMenu() {
+function openMenu() {
+    const menu = getElement("sideMenu");
+    const overlay = getElement("menuOverlay");
 
-    sideMenu.classList.remove("active");
-    menuOverlay.classList.remove("active");
+    if (menu) {
+        menu.classList.add("open");
+    }
 
+    if (overlay) {
+        overlay.classList.add("show");
+    }
+
+    document.body.classList.add("menu-open");
 }
 
-document
-    .getElementById("menuBtn")
-    .addEventListener("click", openSideMenu);
+function closeMenu() {
+    const menu = getElement("sideMenu");
+    const overlay = getElement("menuOverlay");
 
-document
-    .getElementById("closeMenu")
-    .addEventListener("click", closeSideMenu);
+    if (menu) {
+        menu.classList.remove("open");
+    }
 
-menuOverlay.addEventListener(
-    "click",
-    closeSideMenu
-);
+    if (overlay) {
+        overlay.classList.remove("show");
+    }
 
+    document.body.classList.remove("menu-open");
+}
 
 /* =========================================================
-   THEME
-========================================================= */
+   GLOBAL SEARCH
+   ========================================================= */
 
-function updateThemeButton() {
+function setupSearch() {
+    const search = getElement("globalSearch");
 
-    const light =
-        document.body.classList.contains("light");
+    if (!search) return;
 
-    document
-        .getElementById("darkToggle")
-        .classList.toggle("active", !light);
+    search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
 
+        if (!query) return;
+
+        const pages = {
+            calculator: [
+                "calculator",
+                "scientific",
+                "engineering",
+                "math"
+            ],
+
+            tools: [
+                "tools",
+                "resistor",
+                "emi",
+                "interest",
+                "percentage",
+                "bmi",
+                "converter",
+                "statistics"
+            ],
+
+            history: ["history"],
+            favorites: ["favorite"],
+            notes: ["notes", "note"],
+            settings: ["settings"]
+        };
+
+        for (const [page, keywords] of Object.entries(pages)) {
+            if (keywords.some((word) => query.includes(word))) {
+                navigateTo(page);
+                return;
+            }
+        }
+    });
+
+    const voiceButton = getElement("voiceSearch");
+
+    if (voiceButton) {
+        voiceButton.addEventListener("click", startVoiceSearch);
+    }
 }
 
+function startVoiceSearch() {
+    const Recognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
 
-document
-    .getElementById("themeBtn")
-    .addEventListener("click", () => {
+    if (!Recognition) {
+        alert("Voice search is not supported in this browser.");
+        return;
+    }
 
-        document.body.classList.toggle("light");
+    const recognition = new Recognition();
 
-        localStorage.setItem(
-            "leoCalcTheme",
-            document.body.classList.contains("light")
-                ? "light"
-                : "dark"
-        );
+    recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-        updateThemeButton();
+    recognition.onresult = (event) => {
+        const text =
+            event.results[0][0].transcript;
 
-    });
+        const search = getElement("globalSearch");
 
+        if (search) {
+            search.value = text;
+            search.dispatchEvent(new Event("input"));
+        }
+    };
 
-document
-    .getElementById("darkToggle")
-    .addEventListener("click", () => {
+    recognition.onerror = (event) => {
+        console.error("Voice error:", event.error);
+    };
 
-        document.body.classList.toggle("light");
-
-        localStorage.setItem(
-            "leoCalcTheme",
-            document.body.classList.contains("light")
-                ? "light"
-                : "dark"
-        );
-
-        updateThemeButton();
-
-    });
-
-
-if (
-    localStorage.getItem("leoCalcTheme") === "light"
-) {
-    document.body.classList.add("light");
+    recognition.start();
 }
-
-updateThemeButton();
-
-
-/* =========================================================
-   HAPTIC TOGGLE
-========================================================= */
-
-const hapticToggle =
-    document.getElementById("hapticToggle");
-
-hapticToggle.classList.toggle(
-    "active",
-    haptic
-);
-
-hapticToggle.addEventListener("click", () => {
-
-    haptic = !haptic;
-
-    hapticToggle.classList.toggle(
-        "active",
-        haptic
-    );
-
-    localStorage.setItem(
-        "leoCalcHaptic",
-        haptic
-    );
-
-});
-
-
-/* =========================================================
-   CALCULATOR TABS
-========================================================= */
-
-document
-    .querySelectorAll(".calc-tab")
-    .forEach(tab => {
-
-        tab.addEventListener("click", () => {
-
-            document
-                .querySelectorAll(".calc-tab")
-                .forEach(t =>
-                    t.classList.remove("active")
-                );
-
-            tab.classList.add("active");
-
-            document
-                .querySelectorAll(".calc-panel")
-                .forEach(panel =>
-                    panel.classList.add("hidden")
-                );
-
-            const target =
-                tab.dataset.tab;
-
-            document
-                .getElementById(
-                    target === "scientific"
-                        ? "scientificPanel"
-                        : target === "engineering"
-                            ? "engineeringPanel"
-                            : "utilitiesPanel"
-                )
-                .classList.remove("hidden");
-
-        });
-
-    });
-
 
 /* =========================================================
    CALCULATOR
-========================================================= */
+   ========================================================= */
 
-function updateDisplay() {
+function setupCalculator() {
+    $$(".calculator-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+            const type = tab.dataset.calculator;
 
-    expression.textContent =
-        currentExpression || "0";
+            if (type) {
+                switchCalculator(type);
+            }
+        });
+    });
 
-    displayValue.textContent =
-        currentExpression || "0";
+    $$(".calc-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+            const value = button.dataset.value;
 
+            if (value !== undefined) {
+                handleCalculatorInput(value);
+            }
+        });
+    });
+
+    const favoriteButton =
+        getElement("addFavoriteButton");
+
+    if (favoriteButton) {
+        favoriteButton.addEventListener(
+            "click",
+            addCurrentCalculatorFavorite
+        );
+    }
 }
 
+function switchCalculator(type) {
+    currentCalculator = type;
 
-function appendValue(value) {
+    $$(".calculator-tab").forEach((tab) => {
+        tab.classList.toggle(
+            "active",
+            tab.dataset.calculator === type
+        );
+    });
 
-    currentExpression += value;
+    const panels = [
+        "scientificPanel",
+        "engineeringPanel",
+        "utilitiesPanel"
+    ];
 
-    updateDisplay();
+    panels.forEach((id) => {
+        const panel = getElement(id);
 
-    vibrate();
+        if (panel) {
+            panel.classList.remove("active");
+        }
+    });
 
+    const panelMap = {
+        scientific: "scientificPanel",
+        engineering: "engineeringPanel",
+        utilities: "utilitiesPanel"
+    };
+
+    const selected =
+        getElement(panelMap[type]);
+
+    if (selected) {
+        selected.classList.add("active");
+    }
 }
 
+function handleCalculatorInput(value) {
+    if (value === "AC" || value === "clear") {
+        clearCalculator();
+        return;
+    }
 
-function clearCalculator() {
+    if (value === "DEL" || value === "delete") {
+        deleteCalculatorCharacter();
+        return;
+    }
 
-    currentExpression = "";
+    if (value === "=" || value === "calculate") {
+        calculateExpression();
+        return;
+    }
 
-    updateDisplay();
+    if (value === "sqrt") {
+        appendCalculatorValue("sqrt(");
+        return;
+    }
 
+    if (value === "square") {
+        appendCalculatorValue("^2");
+        return;
+    }
+
+    if (value === "cube") {
+        appendCalculatorValue("^3");
+        return;
+    }
+
+    if (value === "pi") {
+        appendCalculatorValue("π");
+        return;
+    }
+
+    if (value === "e") {
+        appendCalculatorValue("e");
+        return;
+    }
+
+    if (value === "sin") {
+        appendCalculatorValue("sin(");
+        return;
+    }
+
+    if (value === "cos") {
+        appendCalculatorValue("cos(");
+        return;
+    }
+
+    if (value === "tan") {
+        appendCalculatorValue("tan(");
+        return;
+    }
+
+    if (value === "log") {
+        appendCalculatorValue("log(");
+        return;
+    }
+
+    if (value === "ln") {
+        appendCalculatorValue("ln(");
+        return;
+    }
+
+    if (value === "!") {
+        appendCalculatorValue("!");
+        return;
+    }
+
+    if (value === "%") {
+        appendCalculatorValue("%");
+        return;
+    }
+
+    appendCalculatorValue(value);
 }
 
+function appendCalculatorValue(value) {
+    currentExpression += String(value);
+    updateCalculatorDisplay();
+}
 
-function deleteLast() {
-
+function deleteCalculatorCharacter() {
     currentExpression =
         currentExpression.slice(0, -1);
 
-    updateDisplay();
-
+    updateCalculatorDisplay();
 }
 
+function clearCalculator() {
+    currentExpression = "";
+    currentResult = "0";
 
-function calculate() {
+    updateCalculatorDisplay();
+}
 
-    if (!currentExpression) return;
+function updateCalculatorDisplay() {
+    const expression =
+        getElement("calculatorExpression");
+
+    const result =
+        getElement("calculatorResult");
+
+    if (expression) {
+        expression.textContent =
+            currentExpression || "0";
+    }
+
+    if (result) {
+        result.textContent =
+            currentResult || "0";
+    }
+}
+
+function calculateExpression() {
+    if (!currentExpression.trim()) return;
 
     try {
+        const expression =
+            normalizeExpression(currentExpression);
 
-        let expr =
-            currentExpression
-                .replace(/×/g, "*")
-                .replace(/÷/g, "/")
-                .replace(/−/g, "-");
+        const result =
+            evaluateExpression(expression);
 
-        if (!/^[0-9+\-*/().%\s]+$/.test(expr)) {
-            throw new Error("Invalid");
+        if (!Number.isFinite(result)) {
+            throw new Error("Invalid result");
         }
 
-        let result =
-            Function(
-                '"use strict"; return (' +
-                expr +
-                ')'
-            )();
+        currentResult =
+            formatNumber(result);
 
-        if (
-            typeof result !== "number" ||
-            !Number.isFinite(result)
-        ) {
-            throw new Error("Invalid");
-        }
+        updateCalculatorDisplay();
 
-        result =
-            Math.round(result * 1e12) / 1e12;
-
-        addHistory(
+        saveCalculation(
             currentExpression,
-            result
+            currentResult
         );
+    } catch (error) {
+        console.error(error);
 
-        lastAnswer = result;
-
-        answer.textContent = result;
-
-        currentExpression =
-            String(result);
-
-        updateDisplay();
-
-        vibrate();
-
-    } catch {
-
-        showToast("Invalid calculation");
-
+        currentResult = "Error";
+        updateCalculatorDisplay();
     }
-
 }
 
+function normalizeExpression(expression) {
+    let exp = expression;
 
-document
-    .querySelectorAll("#calculatorKeys button")
-    .forEach(button => {
+    exp = exp.replaceAll("π", "Math.PI");
+    exp = exp.replace(/\be\b/g, "Math.E");
 
-        button.addEventListener("click", () => {
+    exp = exp.replace(
+        /sqrt\(/g,
+        "Math.sqrt("
+    );
 
-            const key =
-                button.dataset.key;
+    exp = exp.replace(
+        /sin\(/g,
+        "Math.sin("
+    );
 
-            if (key === "AC") {
-                clearCalculator();
-                return;
-            }
+    exp = exp.replace(
+        /cos\(/g,
+        "Math.cos("
+    );
 
-            if (key === "DEL") {
-                deleteLast();
-                return;
-            }
+    exp = exp.replace(
+        /tan\(/g,
+        "Math.tan("
+    );
 
-            if (key === "=") {
-                calculate();
-                return;
-            }
+    exp = exp.replace(
+        /log\(/g,
+        "Math.log10("
+    );
 
-            appendValue(key);
+    exp = exp.replace(
+        /ln\(/g,
+        "Math.log("
+    );
 
-        });
+    exp = exp.replace(/\^/g, "**");
 
-    });
+    exp = convertPercent(exp);
+    exp = convertFactorial(exp);
 
+    return exp;
+}
 
-/* =========================================================
-   SCIENTIFIC FUNCTIONS
-========================================================= */
+function convertPercent(expression) {
+    return expression.replace(
+        /(\d+(?:\.\d+)?)%/g,
+        "($1/100)"
+    );
+}
 
-document
-    .querySelectorAll(
-        ".scientific-buttons button"
-    )
-    .forEach(button => {
+function convertFactorial(expression) {
+    return expression.replace(
+        /(\d+(?:\.\d+)?)!/g,
+        "factorial($1)"
+    );
+}
 
-        button.addEventListener("click", () => {
+function factorial(n) {
+    n = Number(n);
 
-            const action =
-                button.dataset.action;
+    if (!Number.isFinite(n) || n < 0) {
+        throw new Error("Invalid factorial");
+    }
 
-            scientificAction(action);
+    if (!Number.isInteger(n)) {
+        return gamma(n + 1);
+    }
 
-        });
+    if (n > 170) {
+        throw new Error("Number too large");
+    }
 
-    });
+    let result = 1;
 
+    for (let i = 2; i <= n; i++) {
+        result *= i;
+    }
 
-function scientificAction(action) {
+    return result;
+}
 
-    let value =
-        parseFloat(currentExpression);
+function gamma(z) {
+    const coefficients = [
+        676.5203681218851,
+        -1259.1392167224028,
+        771.32342877765313,
+        -176.61502916214059,
+        12.507343278686905,
+        -0.13857109526572012,
+        9.984369578019572e-6,
+        1.5056327351493116e-7
+    ];
+
+    if (z < 0.5) {
+        return Math.PI /
+            (Math.sin(Math.PI * z) *
+                gamma(1 - z));
+    }
+
+    z -= 1;
+
+    let x = 0.99999999999980993;
+
+    for (let i = 0; i < coefficients.length; i++) {
+        x +=
+            coefficients[i] /
+            (z + i + 1);
+    }
+
+    const t =
+        z + coefficients.length - 0.5;
+
+    return Math.sqrt(2 * Math.PI) *
+        Math.pow(t, z + 0.5) *
+        Math.exp(-t) *
+        x;
+}
+
+function evaluateExpression(expression) {
+    const allowed =
+        /^[0-9+\-*/().,\s%a-zA-Z_]+$/;
+
+    if (!allowed.test(expression)) {
+        throw new Error("Invalid characters");
+    }
+
+    return Function(
+        "factorial",
+        `"use strict"; return (${expression})`
+    )(factorial);
+}
+
+function formatNumber(number) {
+    if (!Number.isFinite(number)) {
+        return "Error";
+    }
 
     if (
-        action !== "pi" &&
-        action !== "e" &&
-        action !== "percent" &&
-        action !== "factorial" &&
-        Number.isNaN(value)
+        Math.abs(number) >= 1e12 ||
+        (
+            Math.abs(number) > 0 &&
+            Math.abs(number) < 1e-9
+        )
     ) {
-        showToast("Enter a number first");
-        return;
+        return number.toExponential(8);
     }
 
-
-    switch (action) {
-
-        case "sin":
-            value =
-                Math.sin(
-                    value * Math.PI / 180
-                );
-            break;
-
-        case "cos":
-            value =
-                Math.cos(
-                    value * Math.PI / 180
-                );
-            break;
-
-        case "tan":
-            value =
-                Math.tan(
-                    value * Math.PI / 180
-                );
-            break;
-
-        case "log":
-            value = Math.log10(value);
-            break;
-
-        case "ln":
-            value = Math.log(value);
-            break;
-
-        case "sqrt":
-            value = Math.sqrt(value);
-            break;
-
-        case "square":
-            value = value * value;
-            break;
-
-        case "cube":
-            value = value * value * value;
-            break;
-
-        case "pi":
-            value = Math.PI;
-            break;
-
-        case "e":
-            value = Math.E;
-            break;
-
-        case "percent":
-            value = value / 100;
-            break;
-
-        case "factorial":
-
-            if (
-                value < 0 ||
-                !Number.isInteger(value) ||
-                value > 170
-            ) {
-                showToast(
-                    "Enter a valid whole number"
-                );
-                return;
-            }
-
-            let fact = 1;
-
-            for (
-                let i = 2;
-                i <= value;
-                i++
-            ) {
-                fact *= i;
-            }
-
-            value = fact;
-
-            break;
-    }
-
-
-    if (!Number.isFinite(value)) {
-        showToast("Invalid result");
-        return;
-    }
-
-    value =
-        Math.round(value * 1e12) / 1e12;
-
-    addHistory(
-        action + "(" + currentExpression + ")",
-        value
-    );
-
-    currentExpression =
-        String(value);
-
-    lastAnswer = value;
-
-    answer.textContent = value;
-
-    updateDisplay();
-
+    return Number(
+        number.toFixed(12)
+    ).toString();
 }
-
 
 /* =========================================================
-   HISTORY
-========================================================= */
+   SAVE CALCULATION
+   ========================================================= */
 
-function addHistory(
-    expressionText,
-    result
-) {
+function saveCalculation(expression, result) {
+    const item = {
+        expression,
+        result,
+        category: "calculator",
+        timestamp: Date.now()
+    };
 
-    history.unshift({
-        expression: expressionText,
-        result: result,
-        time: new Date().toLocaleString()
-    });
+    try {
+        if (window.LeoCalcBackend) {
+            LeoCalcBackend.addHistory(item);
+        } else {
+            history.unshift(item);
 
-    history =
-        history.slice(0, 100);
+            localStorage.setItem(
+                "leocalc_history",
+                JSON.stringify(history)
+            );
+        }
 
-    localStorage.setItem(
-        "leoCalcHistory",
-        JSON.stringify(history)
-    );
-
-    renderHistory();
-
+        loadBackendData();
+        updateDashboard();
+    } catch (error) {
+        console.error(
+            "Saving calculation failed:",
+            error
+        );
+    }
 }
 
-
-function renderHistory() {
-
-    const container =
-        document.getElementById("historyList");
-
-    if (!history.length) {
-
-        container.innerHTML =
-            '<p style="color:#77778e;padding:20px 0;">No history yet.</p>';
-
+function addCurrentCalculatorFavorite() {
+    if (!currentExpression) {
+        alert("Enter a calculation first.");
         return;
     }
 
+    const item = {
+        expression: currentExpression,
+        result: currentResult,
+        category: "calculator",
+        timestamp: Date.now()
+    };
 
-    container.innerHTML =
-        history.map(item => `
+    try {
+        if (window.LeoCalcBackend) {
+            if (
+                !LeoCalcBackend.isFavorite(
+                    currentExpression
+                )
+            ) {
+                LeoCalcBackend.addFavorite(item);
+            }
+        } else {
+            favorites.unshift(item);
 
-            <div class="history-item">
+            localStorage.setItem(
+                "leocalc_favorites",
+                JSON.stringify(favorites)
+            );
+        }
 
-                <strong>
-                    ${escapeHtml(item.expression)}
-                    = ${escapeHtml(String(item.result))}
-                </strong>
+        loadBackendData();
+        renderFavorites();
+        updateDashboard();
 
-                <small>
-                    ${escapeHtml(item.time)}
-                </small>
-
-            </div>
-
-        `).join("");
-
+        alert("Added to favorites.");
+    } catch (error) {
+        console.error(error);
+    }
 }
-
-
-renderHistory();
-
-
-document
-    .getElementById("clearHistory")
-    .addEventListener("click", () => {
-
-        history = [];
-
-        localStorage.removeItem(
-            "leoCalcHistory"
-        );
-
-        renderHistory();
-
-        showToast("History cleared");
-
-    });
-
 
 /* =========================================================
    TOOLS
-========================================================= */
+   ========================================================= */
 
-const homeToolData = [
+function setupTools() {
+    $$(".tool-card").forEach((card) => {
+        card.addEventListener("click", () => {
+            const tool = card.dataset.tool;
 
-    {
-        id: "resistor",
-        icon: "⚡",
-        title: "Resistor",
-        desc: "Resistance calculator"
-    },
+            if (tool) {
+                openTool(tool);
+            }
+        });
+    });
 
-    {
-        id: "frequency",
-        icon: "〰",
-        title: "Frequency",
-        desc: "Frequency calculator"
-    },
+    const closeModal =
+        getElement("closeToolModal");
 
-    {
-        id: "percentage",
-        icon: "%",
-        title: "Percentage",
-        desc: "Percentage calculator"
-    },
-
-    {
-        id: "interest",
-        icon: "₹",
-        title: "Interest",
-        desc: "Simple & compound interest"
-    },
-
-    {
-        id: "emi",
-        icon: "🏦",
-        title: "EMI",
-        desc: "Loan EMI calculator"
-    },
-
-    {
-        id: "bmi",
-        icon: "⚖",
-        title: "BMI",
-        desc: "BMI calculator"
-    },
-
-    {
-        id: "time",
-        icon: "🕐",
-        title: "Time & Date",
-        desc: "Clock & stopwatch"
-    },
-
-    {
-        id: "weather",
-        icon: "🌤",
-        title: "Weather",
-        desc: "Current weather"
-    },
-
-    {
-        id: "converter",
-        icon: "📐",
-        title: "Converter",
-        desc: "Unit conversion"
-    },
-
-    {
-        id: "money",
-        icon: "💰",
-        title: "Money",
-        desc: "Money calculations"
-    },
-
-    {
-        id: "statistics",
-        icon: "📊",
-        title: "Statistics",
-        desc: "Mean, median & more"
-    },
-
-    {
-        id: "number",
-        icon: "🔢",
-        title: "Number System",
-        desc: "Binary, decimal, hex"
-    },
-
-    {
-        id: "security",
-        icon: "🛡",
-        title: "Security",
-        desc: "Password generator"
-    },
-
-    {
-        id: "notes",
-        icon: "📝",
-        title: "Quick Notes",
-        desc: "Save your notes"
+    if (closeModal) {
+        closeModal.addEventListener(
+            "click",
+            closeToolModal
+        );
     }
 
-];
+    const modal =
+        getElement("toolModal");
 
-
-function createToolCard(tool) {
-
-    const isFavorite =
-        favorites.includes(tool.id);
-
-    return `
-
-        <div class="tool-card"
-             data-tool-card="${tool.id}">
-
-            <button
-                class="favorite ${isFavorite ? "active" : ""}"
-                data-favorite="${tool.id}">
-                ${isFavorite ? "★" : "☆"}
-            </button>
-
-            <div class="tool-icon">
-                ${tool.icon}
-            </div>
-
-            <h3>
-                ${tool.title}
-            </h3>
-
-            <p>
-                ${tool.desc}
-            </p>
-
-        </div>
-
-    `;
-
+    if (modal) {
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                closeToolModal();
+            }
+        });
+    }
 }
 
+function openTool(tool) {
+    const modal =
+        getElement("toolModal");
 
-function renderHomeTools() {
+    const title =
+        getElement("toolModalTitle");
 
-    document.getElementById(
-        "homeTools"
-    ).innerHTML =
-        homeToolData.map(createToolCard).join("");
+    const body =
+        getElement("toolModalBody");
 
-    attachToolEvents();
+    if (!modal || !title || !body) return;
 
+    const tools = {
+        resistor: {
+            title: "Resistor Calculator",
+            body: resistorTool()
+        },
+
+        frequency: {
+            title: "Frequency Calculator",
+            body: frequencyTool()
+        },
+
+        percentage: {
+            title: "Percentage Calculator",
+            body: percentageTool()
+        },
+
+        interest: {
+            title: "Simple Interest",
+            body: interestTool()
+        },
+
+        emi: {
+            title: "EMI Calculator",
+            body: emiTool()
+        },
+
+        bmi: {
+            title: "BMI Calculator",
+            body: bmiTool()
+        },
+
+        converter: {
+            title: "Unit Converter",
+            body: converterTool()
+        },
+
+        money: {
+            title: "Money Calculator",
+            body: moneyTool()
+        },
+
+        statistics: {
+            title: "Statistics",
+            body: statisticsTool()
+        },
+
+        number: {
+            title: "Number System",
+            body: numberSystemTool()
+        },
+
+        security: {
+            title: "Password Generator",
+            body: passwordTool()
+        },
+
+        notes: {
+            title: "Quick Notes",
+            body: quickNoteTool()
+        },
+
+        time: {
+            title: "Time & Stopwatch",
+            body: timeTool()
+        },
+
+        weather: {
+            title: "Weather",
+            body: weatherTool()
+        }
+    };
+
+    const selected = tools[tool];
+
+    if (!selected) return;
+
+    title.textContent = selected.title;
+    body.innerHTML = selected.body;
+
+    modal.classList.add("show");
+
+    initializeTool(tool);
 }
 
+function closeToolModal() {
+    const modal =
+        getElement("toolModal");
 
-renderHomeTools();
+    if (modal) {
+        modal.classList.remove("show");
+    }
+}
 
+function initializeTool(tool) {
+    if (tool === "resistor") {
+        setupResistorTool();
+    }
 
-document.getElementById(
-    "engineeringTools"
-).innerHTML =
-    homeToolData
-        .slice(0, 6)
-        .map(createToolCard)
-        .join("");
+    if (tool === "frequency") {
+        setupFrequencyTool();
+    }
 
+    if (tool === "percentage") {
+        setupPercentageTool();
+    }
 
-document.getElementById(
-    "utilityTools"
-).innerHTML =
-    homeToolData
-        .slice(6)
-        .map(createToolCard)
-        .join("");
+    if (tool === "interest") {
+        setupInterestTool();
+    }
 
+    if (tool === "emi") {
+        setupEMITool();
+    }
 
-attachToolEvents();
+    if (tool === "bmi") {
+        setupBMITool();
+    }
 
+    if (tool === "converter") {
+        setupConverterTool();
+    }
+
+    if (tool === "money") {
+        setupMoneyTool();
+    }
+
+    if (tool === "statistics") {
+        setupStatisticsTool();
+    }
+
+    if (tool === "number") {
+        setupNumberTool();
+    }
+
+    if (tool === "security") {
+        setupPasswordTool();
+    }
+
+    if (tool === "notes") {
+        setupQuickNoteTool();
+    }
+
+    if (tool === "time") {
+        setupTimeTool();
+    }
+
+    if (tool === "weather") {
+        setupWeatherTool();
+    }
+}
 
 /* =========================================================
-   FAVORITES
-========================================================= */
+   RESISTOR
+   ========================================================= */
 
-function toggleFavorite(id) {
+function resistorTool() {
+    return `
+        <div class="tool-form">
+            <label>Band 1</label>
+            <select id="resBand1">
+                <option value="0">Black</option>
+                <option value="1">Brown</option>
+                <option value="2">Red</option>
+                <option value="3">Orange</option>
+                <option value="4">Yellow</option>
+                <option value="5">Green</option>
+                <option value="6">Blue</option>
+                <option value="7">Violet</option>
+                <option value="8">Grey</option>
+                <option value="9">White</option>
+            </select>
 
-    if (favorites.includes(id)) {
+            <label>Band 2</label>
+            <select id="resBand2">
+                <option value="0">Black</option>
+                <option value="1">Brown</option>
+                <option value="2">Red</option>
+                <option value="3">Orange</option>
+                <option value="4">Yellow</option>
+                <option value="5">Green</option>
+                <option value="6">Blue</option>
+                <option value="7">Violet</option>
+                <option value="8">Grey</option>
+                <option value="9">White</option>
+            </select>
 
-        favorites =
-            favorites.filter(
-                item => item !== id
-            );
+            <label>Multiplier</label>
+            <select id="resMultiplier">
+                <option value="1">×1</option>
+                <option value="10">×10</option>
+                <option value="100">×100</option>
+                <option value="1000">×1K</option>
+                <option value="10000">×10K</option>
+                <option value="100000">×100K</option>
+                <option value="1000000">×1M</option>
+            </select>
 
-        showToast("Removed from favorites");
+            <button id="calculateResistor">
+                Calculate
+            </button>
 
-    } else {
-
-        favorites.push(id);
-
-        showToast("Added to favorites");
-
-    }
-
-    localStorage.setItem(
-        "leoCalcFavorites",
-        JSON.stringify(favorites)
-    );
-
-    renderHomeTools();
-
-    document.getElementById(
-        "engineeringTools"
-    ).innerHTML =
-        homeToolData
-            .slice(0, 6)
-            .map(createToolCard)
-            .join("");
-
-    document.getElementById(
-        "utilityTools"
-    ).innerHTML =
-        homeToolData
-            .slice(6)
-            .map(createToolCard)
-            .join("");
-
-    attachToolEvents();
-
-    renderFavorites();
-
+            <div class="tool-result" id="resistorResult">
+                Result: —
+            </div>
+        </div>
+    `;
 }
 
+function setupResistorTool() {
+    const button =
+        getElement("calculateResistor");
 
-function renderFavorites() {
+    if (!button) return;
 
+    button.addEventListener("click", () => {
+        const a =
+            Number(getElement("resBand1").value);
+
+        const b =
+            Number(getElement("resBand2").value);
+
+        const multiplier =
+            Number(
+                getElement("resMultiplier").value
+            );
+
+        const value =
+            (a * 10 + b) * multiplier;
+
+        getElement("resistorResult").textContent =
+            `Result: ${formatResistance(value)}`;
+    });
+}
+
+function formatResistance(value) {
+    if (value >= 1000000) {
+        return `${value / 1000000} MΩ`;
+    }
+
+    if (value >= 1000) {
+        return `${value / 1000} kΩ`;
+    }
+
+    return `${value} Ω`;
+}
+
+/* =========================================================
+   FREQUENCY
+   ========================================================= */
+
+function frequencyTool() {
+    return `
+        <div class="tool-form">
+            <label>Wavelength (m)</label>
+            <input
+                id="frequencyWavelength"
+                type="number"
+                step="any"
+                placeholder="Enter wavelength"
+            >
+
+            <button id="calculateFrequency">
+                Calculate Frequency
+            </button>
+
+            <div class="tool-result" id="frequencyResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupFrequencyTool() {
+    const button =
+        getElement("calculateFrequency");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const wavelength =
+            Number(
+                getElement(
+                    "frequencyWavelength"
+                ).value
+            );
+
+        if (!wavelength || wavelength <= 0) {
+            alert("Enter a valid wavelength.");
+            return;
+        }
+
+        const speedOfLight =
+            299792458;
+
+        const frequency =
+            speedOfLight / wavelength;
+
+        getElement("frequencyResult").textContent =
+            `Result: ${frequency.toLocaleString()} Hz`;
+    });
+}
+
+/* =========================================================
+   PERCENTAGE
+   ========================================================= */
+
+function percentageTool() {
+    return `
+        <div class="tool-form">
+            <label>Value</label>
+            <input id="percentageValue"
+                   type="number"
+                   step="any">
+
+            <label>Percentage (%)</label>
+            <input id="percentagePercent"
+                   type="number"
+                   step="any">
+
+            <button id="calculatePercentage">
+                Calculate
+            </button>
+
+            <div class="tool-result"
+                 id="percentageResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupPercentageTool() {
+    const button =
+        getElement("calculatePercentage");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const value =
+            Number(
+                getElement("percentageValue").value
+            );
+
+        const percent =
+            Number(
+                getElement("percentagePercent").value
+            );
+
+        const result =
+            value * percent / 100;
+
+        getElement("percentageResult")
+            .textContent =
+            `Result: ${formatNumber(result)}`;
+    });
+}
+
+/* =========================================================
+   SIMPLE INTEREST
+   ========================================================= */
+
+function interestTool() {
+    return `
+        <div class="tool-form">
+            <label>Principal</label>
+            <input id="interestPrincipal"
+                   type="number">
+
+            <label>Rate (%)</label>
+            <input id="interestRate"
+                   type="number"
+                   step="any">
+
+            <label>Time (years)</label>
+            <input id="interestTime"
+                   type="number"
+                   step="any">
+
+            <button id="calculateInterest">
+                Calculate
+            </button>
+
+            <div class="tool-result"
+                 id="interestResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupInterestTool() {
+    const button =
+        getElement("calculateInterest");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const principal =
+            Number(
+                getElement(
+                    "interestPrincipal"
+                ).value
+            );
+
+        const rate =
+            Number(
+                getElement(
+                    "interestRate"
+                ).value
+            );
+
+        const time =
+            Number(
+                getElement(
+                    "interestTime"
+                ).value
+            );
+
+        const interest =
+            principal * rate * time / 100;
+
+        const total =
+            principal + interest;
+
+        getElement("interestResult")
+            .textContent =
+            `Interest: ${formatNumber(interest)}
+             | Total: ${formatNumber(total)}`;
+    });
+}
+
+/* =========================================================
+   EMI
+   ========================================================= */
+
+function emiTool() {
+    return `
+        <div class="tool-form">
+            <label>Loan Amount</label>
+            <input id="emiPrincipal"
+                   type="number">
+
+            <label>Annual Interest (%)</label>
+            <input id="emiRate"
+                   type="number"
+                   step="any">
+
+            <label>Tenure (months)</label>
+            <input id="emiMonths"
+                   type="number">
+
+            <button id="calculateEMI">
+                Calculate EMI
+            </button>
+
+            <div class="tool-result"
+                 id="emiResult">
+                EMI: —
+            </div>
+        </div>
+    `;
+}
+
+function setupEMITool() {
+    const button =
+        getElement("calculateEMI");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const principal =
+            Number(
+                getElement("emiPrincipal").value
+            );
+
+        const annualRate =
+            Number(
+                getElement("emiRate").value
+            );
+
+        const months =
+            Number(
+                getElement("emiMonths").value
+            );
+
+        if (
+            principal <= 0 ||
+            months <= 0
+        ) {
+            alert("Enter valid values.");
+            return;
+        }
+
+        const monthlyRate =
+            annualRate / 12 / 100;
+
+        let emi;
+
+        if (monthlyRate === 0) {
+            emi =
+                principal / months;
+        } else {
+            emi =
+                principal *
+                monthlyRate *
+                Math.pow(
+                    1 + monthlyRate,
+                    months
+                ) /
+                (
+                    Math.pow(
+                        1 + monthlyRate,
+                        months
+                    ) - 1
+                );
+        }
+
+        const total =
+            emi * months;
+
+        getElement("emiResult")
+            .textContent =
+            `Monthly EMI: ${formatMoney(emi)}
+             | Total: ${formatMoney(total)}`;
+    });
+}
+
+/* =========================================================
+   BMI
+   ========================================================= */
+
+function bmiTool() {
+    return `
+        <div class="tool-form">
+            <label>Weight (kg)</label>
+            <input id="bmiWeight"
+                   type="number"
+                   step="any">
+
+            <label>Height (cm)</label>
+            <input id="bmiHeight"
+                   type="number"
+                   step="any">
+
+            <button id="calculateBMI">
+                Calculate BMI
+            </button>
+
+            <div class="tool-result"
+                 id="bmiResult">
+                BMI: —
+            </div>
+        </div>
+    `;
+}
+
+function setupBMITool() {
+    const button =
+        getElement("calculateBMI");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const weight =
+            Number(
+                getElement("bmiWeight").value
+            );
+
+        const heightCm =
+            Number(
+                getElement("bmiHeight").value
+            );
+
+        if (
+            weight <= 0 ||
+            heightCm <= 0
+        ) {
+            alert("Enter valid values.");
+            return;
+        }
+
+        const height =
+            heightCm / 100;
+
+        const bmi =
+            weight /
+            (height * height);
+
+        let category;
+
+        if (bmi < 18.5) {
+            category = "Below typical range";
+        } else if (bmi < 25) {
+            category = "Typical range";
+        } else if (bmi < 30) {
+            category = "Above typical range";
+        } else {
+            category = "High range";
+        }
+
+        getElement("bmiResult")
+            .textContent =
+            `BMI: ${bmi.toFixed(2)} — ${category}`;
+    });
+}
+
+/* =========================================================
+   UNIT CONVERTER
+   ========================================================= */
+
+function converterTool() {
+    return `
+        <div class="tool-form">
+            <label>Category</label>
+
+            <select id="converterCategory">
+                <option value="length">Length</option>
+                <option value="weight">Weight</option>
+                <option value="temperature">
+                    Temperature
+                </option>
+            </select>
+
+            <label>From</label>
+
+            <select id="converterFrom"></select>
+
+            <label>To</label>
+
+            <select id="converterTo"></select>
+
+            <label>Value</label>
+
+            <input id="converterValue"
+                   type="number"
+                   step="any">
+
+            <button id="convertUnits">
+                Convert
+            </button>
+
+            <div class="tool-result"
+                 id="converterResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupConverterTool() {
+    const category =
+        getElement("converterCategory");
+
+    const from =
+        getElement("converterFrom");
+
+    const to =
+        getElement("converterTo");
+
+    const button =
+        getElement("convertUnits");
+
+    const units = {
+        length: ["meter", "kilometer", "centimeter", "foot"],
+        weight: ["kg", "gram", "pound"],
+        temperature: ["celsius", "fahrenheit", "kelvin"]
+    };
+
+    function updateUnits() {
+        const list =
+            units[category.value];
+
+        from.innerHTML = "";
+        to.innerHTML = "";
+
+        list.forEach((unit) => {
+            from.add(
+                new Option(
+                    unit.toUpperCase(),
+                    unit
+                )
+            );
+
+            to.add(
+                new Option(
+                    unit.toUpperCase(),
+                    unit
+                )
+            );
+        });
+    }
+
+    updateUnits();
+
+    category.addEventListener(
+        "change",
+        updateUnits
+    );
+
+    button.addEventListener("click", () => {
+        const value =
+            Number(
+                getElement("converterValue").value
+            );
+
+        const result =
+            convertUnit(
+                category.value,
+                from.value,
+                to.value,
+                value
+            );
+
+        getElement("converterResult")
+            .textContent =
+            `Result: ${formatNumber(result)}`;
+    });
+}
+
+function convertUnit(
+    category,
+    from,
+    to,
+    value
+) {
+    if (category === "length") {
+        const meters = {
+            meter: 1,
+            kilometer: 1000,
+            centimeter: 0.01,
+            foot: 0.3048
+        };
+
+        return (
+            value *
+            meters[from] /
+            meters[to]
+        );
+    }
+
+    if (category === "weight") {
+        const kg = {
+            kg: 1,
+            gram: 0.001,
+            pound: 0.45359237
+        };
+
+        return (
+            value *
+            kg[from] /
+            kg[to]
+        );
+    }
+
+    if (category === "temperature") {
+        let celsius;
+
+        if (from === "celsius") {
+            celsius = value;
+        } else if (from === "fahrenheit") {
+            celsius =
+                (value - 32) * 5 / 9;
+        } else {
+            celsius =
+                value - 273.15;
+        }
+
+        if (to === "celsius") {
+            return celsius;
+        }
+
+        if (to === "fahrenheit") {
+            return (
+                celsius * 9 / 5 + 32
+            );
+        }
+
+        return celsius + 273.15;
+    }
+
+    return value;
+}
+
+/* =========================================================
+   MONEY
+   ========================================================= */
+
+function moneyTool() {
+    return `
+        <div class="tool-form">
+            <label>Amount</label>
+            <input id="moneyAmount"
+                   type="number"
+                   step="any">
+
+            <label>Percentage (%)</label>
+            <input id="moneyPercent"
+                   type="number"
+                   step="any">
+
+            <button id="addMoneyPercent">
+                Add Percentage
+            </button>
+
+            <button id="removeMoneyPercent">
+                Remove Percentage
+            </button>
+
+            <div class="tool-result"
+                 id="moneyResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupMoneyTool() {
+    const amount =
+        getElement("moneyAmount");
+
+    const percent =
+        getElement("moneyPercent");
+
+    const result =
+        getElement("moneyResult");
+
+    getElement("addMoneyPercent")
+        .addEventListener("click", () => {
+            const a = Number(amount.value);
+            const p = Number(percent.value);
+
+            const answer =
+                a + (a * p / 100);
+
+            result.textContent =
+                `Result: ${formatMoney(answer)}`;
+        });
+
+    getElement("removeMoneyPercent")
+        .addEventListener("click", () => {
+            const a = Number(amount.value);
+            const p = Number(percent.value);
+
+            const answer =
+                a - (a * p / 100);
+
+            result.textContent =
+                `Result: ${formatMoney(answer)}`;
+        });
+}
+
+function formatMoney(value) {
+    return new Intl.NumberFormat(
+        "en-IN",
+        {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 2
+        }
+    ).format(value);
+}
+
+/* =========================================================
+   STATISTICS
+   ========================================================= */
+
+function statisticsTool() {
+    return `
+        <div class="tool-form">
+            <label>
+                Numbers
+            </label>
+
+            <textarea
+                id="statisticsInput"
+                placeholder="10, 20, 30, 40"
+            ></textarea>
+
+            <button id="calculateStatistics">
+                Calculate
+            </button>
+
+            <div class="tool-result"
+                 id="statisticsResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupStatisticsTool() {
+    const button =
+        getElement("calculateStatistics");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const raw =
+            getElement(
+                "statisticsInput"
+            ).value;
+
+        const values =
+            raw
+                .split(/[\s,]+/)
+                .map(Number)
+                .filter(Number.isFinite);
+
+        if (!values.length) {
+            alert("Enter numbers.");
+            return;
+        }
+
+        const sorted =
+            [...values].sort(
+                (a, b) => a - b
+            );
+
+        const sum =
+            values.reduce(
+                (a, b) => a + b,
+                0
+            );
+
+        const mean =
+            sum / values.length;
+
+        const median =
+            sorted.length % 2
+                ? sorted[
+                    Math.floor(
+                        sorted.length / 2
+                    )
+                ]
+                : (
+                    sorted[
+                        sorted.length / 2 - 1
+                    ] +
+                    sorted[
+                        sorted.length / 2
+                    ]
+                ) / 2;
+
+        const variance =
+            values.reduce(
+                (total, value) =>
+                    total +
+                    Math.pow(
+                        value - mean,
+                        2
+                    ),
+                0
+            ) / values.length;
+
+        const standardDeviation =
+            Math.sqrt(variance);
+
+        getElement("statisticsResult")
+            .innerHTML = `
+                Count: ${values.length}<br>
+                Sum: ${formatNumber(sum)}<br>
+                Mean: ${formatNumber(mean)}<br>
+                Median: ${formatNumber(median)}<br>
+                Min: ${formatNumber(sorted[0])}<br>
+                Max: ${formatNumber(
+                    sorted[sorted.length - 1]
+                )}<br>
+                Standard Deviation:
+                ${formatNumber(
+                    standardDeviation
+                )}
+            `;
+    });
+}
+
+/* =========================================================
+   NUMBER SYSTEM
+   ========================================================= */
+
+function numberSystemTool() {
+    return `
+        <div class="tool-form">
+            <label>Number</label>
+            <input id="numberSystemInput"
+                   type="text"
+                   placeholder="Enter decimal number">
+
+            <label>From Base</label>
+            <select id="numberFromBase">
+                <option value="2">Binary</option>
+                <option value="8">Octal</option>
+                <option value="10" selected>
+                    Decimal
+                </option>
+                <option value="16">Hexadecimal</option>
+            </select>
+
+            <label>To Base</label>
+            <select id="numberToBase">
+                <option value="2">Binary</option>
+                <option value="8">Octal</option>
+                <option value="10">Decimal</option>
+                <option value="16" selected>
+                    Hexadecimal
+                </option>
+            </select>
+
+            <button id="convertNumberSystem">
+                Convert
+            </button>
+
+            <div class="tool-result"
+                 id="numberSystemResult">
+                Result: —
+            </div>
+        </div>
+    `;
+}
+
+function setupNumberTool() {
+    const button =
+        getElement(
+            "convertNumberSystem"
+        );
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const input =
+            getElement(
+                "numberSystemInput"
+            ).value.trim();
+
+        const from =
+            Number(
+                getElement(
+                    "numberFromBase"
+                ).value
+            );
+
+        const to =
+            Number(
+                getElement(
+                    "numberToBase"
+                ).value
+            );
+
+        try {
+            const decimal =
+                parseInt(input, from);
+
+            if (Number.isNaN(decimal)) {
+                throw new Error("Invalid number");
+            }
+
+            const answer =
+                decimal.toString(to)
+                    .toUpperCase();
+
+            getElement(
+                "numberSystemResult"
+            ).textContent =
+                `Result: ${answer}`;
+        } catch (error) {
+            getElement(
+                "numberSystemResult"
+            ).textContent =
+                "Result: Invalid input";
+        }
+    });
+}
+
+/* =========================================================
+   PASSWORD GENERATOR
+   ========================================================= */
+
+function passwordTool() {
+    return `
+        <div class="tool-form">
+            <label>Password Length</label>
+
+            <input
+                id="passwordLength"
+                type="number"
+                min="4"
+                max="64"
+                value="16"
+            >
+
+            <label>
+                <input
+                    id="passwordNumbers"
+                    type="checkbox"
+                    checked
+                >
+                Numbers
+            </label>
+
+            <label>
+                <input
+                    id="passwordSymbols"
+                    type="checkbox"
+                    checked
+                >
+                Symbols
+            </label>
+
+            <button id="generatePassword">
+                Generate
+            </button>
+
+            <div class="tool-result"
+                 id="passwordResult">
+                —
+            </div>
+        </div>
+    `;
+}
+
+function setupPasswordTool() {
+    const button =
+        getElement("generatePassword");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const length =
+            Math.min(
+                64,
+                Math.max(
+                    4,
+                    Number(
+                        getElement(
+                            "passwordLength"
+                        ).value
+                    ) || 16
+                )
+            );
+
+        let chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+            "abcdefghijklmnopqrstuvwxyz";
+
+        if (
+            getElement(
+                "passwordNumbers"
+            ).checked
+        ) {
+            chars += "0123456789";
+        }
+
+        if (
+            getElement(
+                "passwordSymbols"
+            ).checked
+        ) {
+            chars += "!@#$%^&*";
+        }
+
+        let password = "";
+
+        const random =
+            new Uint32Array(length);
+
+        crypto.getRandomValues(random);
+
+        for (let i = 0; i < length; i++) {
+            password +=
+                chars[
+                    random[i] % chars.length
+                ];
+        }
+
+        getElement(
+            "passwordResult"
+        ).textContent = password;
+    });
+}
+
+/* =========================================================
+   QUICK NOTES
+   ========================================================= */
+
+function quickNoteTool() {
+    return `
+        <div class="tool-form">
+            <input
+                id="quickNoteTitle"
+                type="text"
+                placeholder="Note title"
+            >
+
+            <textarea
+                id="quickNoteContent"
+                placeholder="Write your note..."
+            ></textarea>
+
+            <button id="saveQuickNote">
+                Save Note
+            </button>
+
+            <div class="tool-result"
+                 id="quickNoteResult">
+                —
+            </div>
+        </div>
+    `;
+}
+
+function setupQuickNoteTool() {
+    const button =
+        getElement("saveQuickNote");
+
+    if (!button) return;
+
+    button.addEventListener("click", () => {
+        const title =
+            getElement(
+                "quickNoteTitle"
+            ).value.trim();
+
+        const content =
+            getElement(
+                "quickNoteContent"
+            ).value.trim();
+
+        if (!content) {
+            alert("Write something first.");
+            return;
+        }
+
+        try {
+            const note = {
+                title:
+                    title || "Untitled Note",
+                content,
+                mood: "default",
+                color: "default",
+                favorite: false,
+                pinned: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            };
+
+            if (window.LeoCalcBackend) {
+                LeoCalcBackend.addNote(note);
+            }
+
+            loadBackendData();
+            renderNotes();
+            updateDashboard();
+
+            getElement(
+                "quickNoteResult"
+            ).textContent =
+                "Note saved successfully.";
+
+            getElement(
+                "quickNoteTitle"
+            ).value = "";
+
+            getElement(
+                "quickNoteContent"
+            ).value = "";
+        } catch (error) {
+            console.error(error);
+        }
+    });
+}
+
+/* =========================================================
+   NOTES PAGE
+   ========================================================= */
+
+function setupNotes() {
+    const search =
+        getElement("notesSearch");
+
+    if (search) {
+        search.addEventListener(
+            "input",
+            renderNotes
+        );
+    }
+
+    const addButton =
+        getElement("addNoteButton");
+
+    if (addButton) {
+        addButton.addEventListener(
+            "click",
+            () => {
+                openNoteEditor();
+            }
+        );
+    }
+}
+
+function renderNotes() {
     const container =
-        document.getElementById(
-            "favoritesList"
-        );
+        getElement("notesList");
 
-    const list =
-        homeToolData.filter(
-            tool =>
-                favorites.includes(tool.id)
-        );
+    if (!container) return;
 
-    if (!list.length) {
+    loadBackendData();
 
-        container.innerHTML =
-            `<p style="color:#77778e;padding:20px;">
-                No favorite tools yet.
-            </p>`;
+    const search =
+        (
+            getElement("notesSearch")?.value ||
+            ""
+        ).trim().toLowerCase();
+
+    let filtered =
+        notes.filter((note) => {
+            const title =
+                safeText(note.title)
+                    .toLowerCase();
+
+            const content =
+                safeText(note.content)
+                    .toLowerCase();
+
+            return (
+                !search ||
+                title.includes(search) ||
+                content.includes(search)
+            );
+        });
+
+    if (!filtered.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No Notes Yet</h3>
+                <p>Create your first note.</p>
+            </div>
+        `;
 
         return;
     }
 
     container.innerHTML =
-        list.map(createToolCard).join("");
+        filtered.map((note) => `
+            <article class="note-card"
+                     data-id="${note.id || ""}">
 
-    attachToolEvents();
+                <div class="note-card-header">
+                    <h3>
+                        ${escapeHTML(
+                            note.title ||
+                            "Untitled Note"
+                        )}
+                    </h3>
 
+                    ${
+                        note.pinned
+                            ? "<span>📌</span>"
+                            : ""
+                    }
+                </div>
+
+                <p>
+                    ${escapeHTML(
+                        note.content || ""
+                    )}
+                </p>
+
+                <div class="note-actions">
+
+                    <button
+                        data-note-edit="${note.id}">
+                        Edit
+                    </button>
+
+                    <button
+                        data-note-favorite="${note.id}">
+                        ${note.favorite ? "★" : "☆"}
+                    </button>
+
+                    <button
+                        data-note-pin="${note.id}">
+                        ${note.pinned ? "Unpin" : "Pin"}
+                    </button>
+
+                    <button
+                        data-note-delete="${note.id}">
+                        Delete
+                    </button>
+
+                </div>
+            </article>
+        `).join("");
+
+    container
+        .querySelectorAll(
+            "[data-note-edit]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    openNoteEditor(
+                        button.dataset.noteEdit
+                    );
+                }
+            );
+        });
+
+    container
+        .querySelectorAll(
+            "[data-note-favorite]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    toggleNoteFavorite(
+                        button.dataset.noteFavorite
+                    );
+                }
+            );
+        });
+
+    container
+        .querySelectorAll(
+            "[data-note-pin]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    toggleNotePinned(
+                        button.dataset.notePin
+                    );
+                }
+            );
+        });
+
+    container
+        .querySelectorAll(
+            "[data-note-delete]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    deleteNote(
+                        button.dataset.noteDelete
+                    );
+                }
+            );
+        });
 }
 
+function openNoteEditor(noteId = null) {
+    const title =
+        prompt(
+            "Note title:",
+            noteId
+                ? (
+                    notes.find(
+                        (n) => n.id === noteId
+                    )?.title || ""
+                )
+                : ""
+        );
 
-function attachToolEvents() {
+    if (title === null) return;
 
-    document
-        .querySelectorAll("[data-tool-card]")
-        .forEach(card => {
+    const existing =
+        noteId
+            ? notes.find(
+                (n) => n.id === noteId
+            )
+            : null;
 
-            card.onclick = event => {
+    const content =
+        prompt(
+            "Note content:",
+            existing?.content || ""
+        );
 
+    if (content === null) return;
+
+    try {
+        if (noteId && window.LeoCalcBackend) {
+            LeoCalcBackend.updateNote(
+                noteId,
+                {
+                    title:
+                        title || "Untitled Note",
+                    content,
+                    updatedAt: Date.now()
+                }
+            );
+        } else if (window.LeoCalcBackend) {
+            LeoCalcBackend.addNote({
+                title:
+                    title || "Untitled Note",
+                content,
+                mood: "default",
+                color: "default",
+                favorite: false,
+                pinned: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            });
+        }
+
+        loadBackendData();
+        renderNotes();
+        updateDashboard();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function toggleNoteFavorite(id) {
+    if (!window.LeoCalcBackend) return;
+
+    LeoCalcBackend.toggleNoteFavorite(id);
+
+    loadBackendData();
+    renderNotes();
+}
+
+function toggleNotePinned(id) {
+    if (!window.LeoCalcBackend) return;
+
+    LeoCalcBackend.toggleNotePinned(id);
+
+    loadBackendData();
+    renderNotes();
+}
+
+function deleteNote(id) {
+    if (!confirm("Delete this note?")) {
+        return;
+    }
+
+    if (window.LeoCalcBackend) {
+        LeoCalcBackend.deleteNote(id);
+    }
+
+    loadBackendData();
+    renderNotes();
+    updateDashboard();
+}
+
+/* =========================================================
+   HISTORY
+   ========================================================= */
+
+function setupHistory() {
+    const clearButton =
+        getElement("clearHistory");
+
+    if (clearButton) {
+        clearButton.addEventListener(
+            "click",
+            () => {
                 if (
-                    event.target.closest(
-                        "[data-favorite]"
+                    !confirm(
+                        "Clear calculation history?"
                     )
                 ) {
                     return;
                 }
 
-                openTool(
-                    card.dataset.toolCard
-                );
+                if (window.LeoCalcBackend) {
+                    LeoCalcBackend.clearHistory();
+                }
 
-            };
-
-        });
-
-
-    document
-        .querySelectorAll("[data-favorite]")
-        .forEach(button => {
-
-            button.onclick = event => {
-
-                event.stopPropagation();
-
-                toggleFavorite(
-                    button.dataset.favorite
-                );
-
-            };
-
-        });
-
+                loadBackendData();
+                renderHistory();
+                updateDashboard();
+            }
+        );
+    }
 }
 
+function renderHistory() {
+    const container =
+        getElement("historyList");
 
-renderFavorites();
+    if (!container) return;
 
+    loadBackendData();
+
+    if (!history.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No History</h3>
+                <p>Your calculations will appear here.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        history.map((item) => `
+            <div class="history-item">
+
+                <div>
+                    <small>
+                        ${formatDate(
+                            item.timestamp ||
+                            item.createdAt
+                        )}
+                    </small>
+
+                    <strong>
+                        ${escapeHTML(
+                            item.expression ||
+                            ""
+                        )}
+                    </strong>
+
+                    <span>
+                        = ${escapeHTML(
+                            item.result ||
+                            ""
+                        )}
+                    </span>
+                </div>
+
+                <button
+                    data-history-delete="${item.id}">
+                    ×
+                </button>
+
+            </div>
+        `).join("");
+
+    container
+        .querySelectorAll(
+            "[data-history-delete]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    deleteHistoryItem(
+                        button.dataset
+                            .historyDelete
+                    );
+                }
+            );
+        });
+}
+
+function deleteHistoryItem(id) {
+    if (window.LeoCalcBackend) {
+        LeoCalcBackend.deleteHistory(id);
+    }
+
+    loadBackendData();
+    renderHistory();
+    updateDashboard();
+}
 
 /* =========================================================
-   MODAL
-========================================================= */
+   FAVORITES
+   ========================================================= */
 
-function openTool(id) {
+function setupFavorites() {
+    renderFavorites();
+}
 
-    const tool =
-        homeToolData.find(
-            item => item.id === id
+function renderFavorites() {
+    const container =
+        getElement("favoritesList");
+
+    if (!container) return;
+
+    loadBackendData();
+
+    if (!favorites.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No Favorites</h3>
+                <p>Save useful calculations here.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        favorites.map((item) => `
+            <div class="favorite-item">
+
+                <div>
+                    <strong>
+                        ${escapeHTML(
+                            item.expression ||
+                            ""
+                        )}
+                    </strong>
+
+                    <span>
+                        = ${escapeHTML(
+                            item.result ||
+                            ""
+                        )}
+                    </span>
+                </div>
+
+                <button
+                    data-favorite-remove="${item.id}">
+                    ★
+                </button>
+
+            </div>
+        `).join("");
+
+    container
+        .querySelectorAll(
+            "[data-favorite-remove]"
+        )
+        .forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    removeFavorite(
+                        button.dataset
+                            .favoriteRemove
+                    );
+                }
+            );
+        });
+}
+
+function removeFavorite(id) {
+    if (window.LeoCalcBackend) {
+        LeoCalcBackend.removeFavorite(id);
+    }
+
+    loadBackendData();
+    renderFavorites();
+    updateDashboard();
+}
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function setupSettings() {
+    const darkMode =
+        getElement("darkModeToggle");
+
+    if (darkMode) {
+        darkMode.addEventListener(
+            "change",
+            () => {
+                const enabled =
+                    darkMode.checked;
+
+                document.body.classList.toggle(
+                    "dark-mode",
+                    enabled
+                );
+
+                if (window.LeoCalcBackend) {
+                    LeoCalcBackend.updateSettings({
+                        darkMode: enabled
+                    });
+                }
+            }
         );
+    }
 
-    if (!tool) return;
+    const haptic =
+        getElement("hapticToggle");
 
-    modalTitle.textContent =
-        tool.title;
+    if (haptic) {
+        haptic.addEventListener(
+            "change",
+            () => {
+                if (window.LeoCalcBackend) {
+                    LeoCalcBackend.updateSettings({
+                        haptic: haptic.checked
+                    });
+                }
+            }
+        );
+    }
 
-    modalIcon.textContent =
-        tool.icon;
+    const exportButton =
+        getElement("exportHistory");
 
-    modalContent.innerHTML =
-        getToolHTML(id);
+    if (exportButton) {
+        exportButton.addEventListener(
+            "click",
+            exportAllData
+        );
+    }
 
-    toolModal.classList.remove("hidden");
+    const clearButton =
+        getElement("clearAllData");
 
-    attachToolForm(id);
-
+    if (clearButton) {
+        clearButton.addEventListener(
+            "click",
+            clearAllApplicationData
+        );
+    }
 }
 
+function applySavedSettings() {
+    try {
+        if (!window.LeoCalcBackend) return;
 
-function closeModal() {
+        const settings =
+            LeoCalcBackend.getSettings();
 
-    toolModal.classList.add("hidden");
+        const darkMode =
+            getElement("darkModeToggle");
 
-    modalContent.innerHTML = "";
+        const haptic =
+            getElement("hapticToggle");
 
-}
-
-
-document
-    .getElementById("closeModal")
-    .addEventListener(
-        "click",
-        closeModal
-    );
-
-
-toolModal.addEventListener(
-    "click",
-    event => {
-
-        if (
-            event.target === toolModal
-        ) {
-            closeModal();
+        if (darkMode) {
+            darkMode.checked =
+                !!settings.darkMode;
         }
 
+        if (haptic) {
+            haptic.checked =
+                !!settings.haptic;
+        }
+
+        document.body.classList.toggle(
+            "dark-mode",
+            !!settings.darkMode
+        );
+    } catch (error) {
+        console.error(error);
     }
-);
-
-
-/* =========================================================
-   TOOL HTML
-========================================================= */
-
-function getToolHTML(id) {
-
-    switch (id) {
-
-        case "resistor":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Voltage (V)</label>
-                    <input id="resV" type="number">
-
-                    <label>Current (A)</label>
-                    <input id="resI" type="number">
-
-                    <button id="resBtn">
-                        Calculate Resistance
-                    </button>
-
-                    <div id="resResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "frequency":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Frequency (Hz)</label>
-                    <input id="freqValue"
-                           type="number">
-
-                    <button id="freqBtn">
-                        Convert Frequency
-                    </button>
-
-                    <div id="freqResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "percentage":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Value</label>
-                    <input id="percentValue"
-                           type="number">
-
-                    <label>Percentage (%)</label>
-                    <input id="percentRate"
-                           type="number">
-
-                    <button id="percentBtn">
-                        Calculate
-                    </button>
-
-                    <div id="percentResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "interest":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Principal</label>
-                    <input id="interestP"
-                           type="number">
-
-                    <label>Rate (%)</label>
-                    <input id="interestR"
-                           type="number">
-
-                    <label>Time (Years)</label>
-                    <input id="interestT"
-                           type="number">
-
-                    <button id="interestBtn">
-                        Calculate Interest
-                    </button>
-
-                    <div id="interestResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "emi":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Loan Amount</label>
-                    <input id="emiP"
-                           type="number">
-
-                    <label>Annual Interest (%)</label>
-                    <input id="emiR"
-                           type="number">
-
-                    <label>Months</label>
-                    <input id="emiN"
-                           type="number">
-
-                    <button id="emiBtn">
-                        Calculate EMI
-                    </button>
-
-                    <div id="emiResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "bmi":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Weight (kg)</label>
-                    <input id="bmiW"
-                           type="number">
-
-                    <label>Height (cm)</label>
-                    <input id="bmiH"
-                           type="number">
-
-                    <button id="bmiBtn">
-                        Calculate BMI
-                    </button>
-
-                    <div id="bmiResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "time":
-
-            return `
-                <div class="tool-form">
-
-                    <div id="liveClock"
-                         class="result-box"
-                         style="font-size:30px;text-align:center;">
-                        --
-                    </div>
-
-                    <button id="stopwatchStart">
-                        Start Stopwatch
-                    </button>
-
-                    <button id="stopwatchReset">
-                        Reset
-                    </button>
-
-                    <div id="stopwatch"
-                         class="result-box">
-                        00:00:00
-                    </div>
-
-                </div>
-            `;
-
-
-        case "weather":
-
-            return `
-                <div class="tool-form">
-
-                    <button id="weatherBtn">
-                        Get My Weather
-                    </button>
-
-                    <div id="weatherResult"
-                         class="result-box">
-                        Weather data will appear here.
-                    </div>
-
-                </div>
-            `;
-
-
-        case "converter":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Category</label>
-
-                    <select id="convertType">
-
-                        <option value="length">
-                            Length
-                        </option>
-
-                        <option value="weight">
-                            Weight
-                        </option>
-
-                        <option value="temperature">
-                            Temperature
-                        </option>
-
-                    </select>
-
-                    <label>Value</label>
-
-                    <input id="convertValue"
-                           type="number">
-
-                    <label>From</label>
-
-                    <select id="convertFrom"></select>
-
-                    <label>To</label>
-
-                    <select id="convertTo"></select>
-
-                    <button id="convertBtn">
-                        Convert
-                    </button>
-
-                    <div id="convertResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "money":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Amount</label>
-
-                    <input id="moneyAmount"
-                           type="number">
-
-                    <label>Percentage</label>
-
-                    <input id="moneyPercent"
-                           type="number">
-
-                    <button id="moneyAdd">
-                        Add Percentage
-                    </button>
-
-                    <button id="moneyRemove">
-                        Remove Percentage
-                    </button>
-
-                    <div id="moneyResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "statistics":
-
-            return `
-                <div class="tool-form">
-
-                    <label>
-                        Numbers separated by commas
-                    </label>
-
-                    <input id="statsInput"
-                           type="text"
-                           placeholder="10,20,30,40">
-
-                    <button id="statsBtn">
-                        Calculate Statistics
-                    </button>
-
-                    <div id="statsResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "number":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Decimal Number</label>
-
-                    <input id="numberInput"
-                           type="number">
-
-                    <button id="numberBtn">
-                        Convert Number System
-                    </button>
-
-                    <div id="numberResult"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "security":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Password Length</label>
-
-                    <input id="passwordLength"
-                           type="number"
-                           min="6"
-                           max="64"
-                           value="16">
-
-                    <button id="passwordBtn">
-                        Generate Password
-                    </button>
-
-                    <div id="passwordResult"
-                         class="result-box"
-                         style="word-break:break-all;">
-                    </div>
-
-                </div>
-            `;
-
-
-        case "notes":
-
-            return `
-                <div class="tool-form">
-
-                    <label>Note</label>
-
-                    <textarea
-                        id="noteText"
-                        placeholder="Write your note..."></textarea>
-
-                    <button id="saveNote">
-                        Save Note
-                    </button>
-
-                    <div id="notesList"
-                         class="result-box">
-                    </div>
-
-                </div>
-            `;
-
-        default:
-
-            return `
-                <div class="result-box">
-                    Tool coming soon.
-                </div>
-            `;
-
-    }
-
 }
 
-
 /* =========================================================
-   TOOL EVENTS
-========================================================= */
+   EXPORT / CLEAR
+   ========================================================= */
 
-function attachToolForm(id) {
-
-
-    if (id === "resistor") {
-
-        document
-            .getElementById("resBtn")
-            .onclick = () => {
-
-                const v =
-                    Number(
-                        document.getElementById(
-                            "resV"
-                        ).value
-                    );
-
-                const i =
-                    Number(
-                        document.getElementById(
-                            "resI"
-                        ).value
-                    );
-
-                if (!v || !i) {
-                    showToast("Enter both values");
-                    return;
-                }
-
-                const r = v / i;
-
-                document.getElementById(
-                    "resResult"
-                ).innerHTML =
-                    `Resistance = <b>${r.toFixed(4)} Ω</b>`;
-
-            };
-
+function exportAllData() {
+    if (!window.LeoCalcBackend) {
+        alert("Backend unavailable.");
+        return;
     }
 
+    const data =
+        LeoCalcBackend.exportData();
 
-    if (id === "frequency") {
-
-        document
-            .getElementById("freqBtn")
-            .onclick = () => {
-
-                const f =
-                    Number(
-                        document.getElementById(
-                            "freqValue"
-                        ).value
-                    );
-
-                if (!f) {
-                    showToast("Enter frequency");
-                    return;
-                }
-
-                document.getElementById(
-                    "freqResult"
-                ).innerHTML =
-                    `${f} Hz<br>
-                     ${(f / 1000).toFixed(4)} kHz<br>
-                     ${(f / 1000000).toFixed(6)} MHz`;
-
-            };
-
-    }
-
-
-    if (id === "percentage") {
-
-        document
-            .getElementById("percentBtn")
-            .onclick = () => {
-
-                const value =
-                    Number(
-                        document.getElementById(
-                            "percentValue"
-                        ).value
-                    );
-
-                const rate =
-                    Number(
-                        document.getElementById(
-                            "percentRate"
-                        ).value
-                    );
-
-                const result =
-                    value * rate / 100;
-
-                document.getElementById(
-                    "percentResult"
-                ).innerHTML =
-                    `${rate}% of ${value}
-                     = <b>${result}</b>`;
-
-            };
-
-    }
-
-
-    if (id === "interest") {
-
-        document
-            .getElementById("interestBtn")
-            .onclick = () => {
-
-                const p =
-                    Number(
-                        document.getElementById(
-                            "interestP"
-                        ).value
-                    );
-
-                const r =
-                    Number(
-                        document.getElementById(
-                            "interestR"
-                        ).value
-                    );
-
-                const t =
-                    Number(
-                        document.getElementById(
-                            "interestT"
-                        ).value
-                    );
-
-                const si =
-                    p * r * t / 100;
-
-                const amount =
-                    p + si;
-
-                document.getElementById(
-                    "interestResult"
-                ).innerHTML =
-                    `Simple Interest:
-                     <b>${si.toFixed(2)}</b><br>
-                     Total Amount:
-                     <b>${amount.toFixed(2)}</b>`;
-
-            };
-
-    }
-
-
-    if (id === "emi") {
-
-        document
-            .getElementById("emiBtn")
-            .onclick = () => {
-
-                const p =
-                    Number(
-                        document.getElementById(
-                            "emiP"
-                        ).value
-                    );
-
-                const annual =
-                    Number(
-                        document.getElementById(
-                            "emiR"
-                        ).value
-                    );
-
-                const n =
-                    Number(
-                        document.getElementById(
-                            "emiN"
-                        ).value
-                    );
-
-                const r =
-                    annual / 12 / 100;
-
-                if (!p || !n) {
-                    showToast("Enter all values");
-                    return;
-                }
-
-                let emi;
-
-                if (r === 0) {
-                    emi = p / n;
-                } else {
-                    emi =
-                        p * r *
-                        Math.pow(1 + r, n) /
-                        (
-                            Math.pow(1 + r, n) - 1
-                        );
-                }
-
-                document.getElementById(
-                    "emiResult"
-                ).innerHTML =
-                    `Monthly EMI:
-                     <b>₹${emi.toFixed(2)}</b><br>
-                     Total Payment:
-                     <b>₹${(emi * n).toFixed(2)}</b>`;
-
-            };
-
-    }
-
-
-    if (id === "bmi") {
-
-        document
-            .getElementById("bmiBtn")
-            .onclick = () => {
-
-                const weight =
-                    Number(
-                        document.getElementById(
-                            "bmiW"
-                        ).value
-                    );
-
-                const height =
-                    Number(
-                        document.getElementById(
-                            "bmiH"
-                        ).value
-                    ) / 100;
-
-                if (!weight || !height) {
-                    showToast("Enter values");
-                    return;
-                }
-
-                const bmi =
-                    weight /
-                    (height * height);
-
-                document.getElementById(
-                    "bmiResult"
-                ).innerHTML =
-                    `BMI =
-                     <b>${bmi.toFixed(2)}</b>`;
-
-            };
-
-    }
-
-
-    if (id === "time") {
-
-        startClock();
-
-        let seconds = 0;
-        let timer = null;
-
-        const display =
-            document.getElementById(
-                "stopwatch"
-            );
-
-        document.getElementById(
-            "stopwatchStart"
-        ).onclick = function () {
-
-            if (timer) {
-
-                clearInterval(timer);
-                timer = null;
-
-                this.textContent =
-                    "Start Stopwatch";
-
-                return;
+    const blob =
+        new Blob(
+            [
+                JSON.stringify(
+                    data,
+                    null,
+                    2
+                )
+            ],
+            {
+                type: "application/json"
             }
-
-            this.textContent =
-                "Pause Stopwatch";
-
-            timer = setInterval(() => {
-
-                seconds++;
-
-                const h =
-                    String(
-                        Math.floor(
-                            seconds / 3600
-                        )
-                    ).padStart(2, "0");
-
-                const m =
-                    String(
-                        Math.floor(
-                            (seconds % 3600) / 60
-                        )
-                    ).padStart(2, "0");
-
-                const s =
-                    String(
-                        seconds % 60
-                    ).padStart(2, "0");
-
-                display.textContent =
-                    `${h}:${m}:${s}`;
-
-            }, 1000);
-
-        };
-
-
-        document.getElementById(
-            "stopwatchReset"
-        ).onclick = () => {
-
-            seconds = 0;
-
-            display.textContent =
-                "00:00:00";
-
-        };
-
-    }
-
-
-    if (id === "weather") {
-
-        document.getElementById(
-            "weatherBtn"
-        ).onclick = getWeather;
-
-    }
-
-
-    if (id === "converter") {
-
-        const type =
-            document.getElementById(
-                "convertType"
-            );
-
-        type.addEventListener(
-            "change",
-            updateConverterUnits
         );
 
-        updateConverterUnits();
+    const url =
+        URL.createObjectURL(blob);
 
-        document.getElementById(
-            "convertBtn"
-        ).onclick =
-            performConversion;
+    const anchor =
+        document.createElement("a");
 
-    }
+    anchor.href = url;
+    anchor.download =
+        `LeoCalc_Backup_${Date.now()}.json`;
 
+    document.body.appendChild(anchor);
 
-    if (id === "money") {
+    anchor.click();
 
-        const calculateMoney =
-            add => {
+    anchor.remove();
 
-                const amount =
-                    Number(
-                        document.getElementById(
-                            "moneyAmount"
-                        ).value
-                    );
-
-                const percent =
-                    Number(
-                        document.getElementById(
-                            "moneyPercent"
-                        ).value
-                    );
-
-                const result =
-                    add
-                        ? amount * (1 + percent / 100)
-                        : amount * (1 - percent / 100);
-
-                document.getElementById(
-                    "moneyResult"
-                ).innerHTML =
-                    `Result:
-                     <b>₹${result.toFixed(2)}</b>`;
-
-            };
-
-        document.getElementById(
-            "moneyAdd"
-        ).onclick =
-            () => calculateMoney(true);
-
-        document.getElementById(
-            "moneyRemove"
-        ).onclick =
-            () => calculateMoney(false);
-
-    }
-
-
-    if (id === "statistics") {
-
-        document.getElementById(
-            "statsBtn"
-        ).onclick = () => {
-
-            const numbers =
-                document.getElementById(
-                    "statsInput"
-                ).value
-                    .split(",")
-                    .map(Number)
-                    .filter(
-                        n => Number.isFinite(n)
-                    );
-
-            if (!numbers.length) {
-                showToast("Enter numbers");
-                return;
-            }
-
-            const sorted =
-                [...numbers].sort(
-                    (a,b) => a-b
-                );
-
-            const sum =
-                numbers.reduce(
-                    (a,b) => a+b,
-                    0
-                );
-
-            const mean =
-                sum / numbers.length;
-
-            const mid =
-                Math.floor(
-                    sorted.length / 2
-                );
-
-            const median =
-                sorted.length % 2
-                    ? sorted[mid]
-                    : (
-                        sorted[mid - 1] +
-                        sorted[mid]
-                    ) / 2;
-
-            const min =
-                Math.min(...numbers);
-
-            const max =
-                Math.max(...numbers);
-
-            document.getElementById(
-                "statsResult"
-            ).innerHTML =
-                `Count: <b>${numbers.length}</b><br>
-                 Sum: <b>${sum}</b><br>
-                 Mean: <b>${mean.toFixed(4)}</b><br>
-                 Median: <b>${median}</b><br>
-                 Minimum: <b>${min}</b><br>
-                 Maximum: <b>${max}</b>`;
-
-        };
-
-    }
-
-
-    if (id === "number") {
-
-        document.getElementById(
-            "numberBtn"
-        ).onclick = () => {
-
-            const value =
-                Number(
-                    document.getElementById(
-                        "numberInput"
-                    ).value
-                );
-
-            if (
-                !Number.isInteger(value) ||
-                value < 0
-            ) {
-                showToast(
-                    "Enter a positive whole number"
-                );
-                return;
-            }
-
-            document.getElementById(
-                "numberResult"
-            ).innerHTML =
-                `Binary:
-                 <b>${value.toString(2)}</b><br>
-                 Octal:
-                 <b>${value.toString(8)}</b><br>
-                 Decimal:
-                 <b>${value}</b><br>
-                 Hexadecimal:
-                 <b>${value.toString(16).toUpperCase()}</b>`;
-
-        };
-
-    }
-
-
-    if (id === "security") {
-
-        document.getElementById(
-            "passwordBtn"
-        ).onclick = () => {
-
-            let length =
-                Number(
-                    document.getElementById(
-                        "passwordLength"
-                    ).value
-                );
-
-            length =
-                Math.max(
-                    6,
-                    Math.min(64, length || 16)
-                );
-
-            const chars =
-                "ABCDEFGHJKLMNPQRSTUVWXYZ" +
-                "abcdefghijkmnopqrstuvwxyz" +
-                "23456789!@#$%^&*";
-
-            let password = "";
-
-            for (
-                let i = 0;
-                i < length;
-                i++
-            ) {
-
-                password +=
-                    chars[
-                        Math.floor(
-                            Math.random() *
-                            chars.length
-                        )
-                    ];
-
-            }
-
-            document.getElementById(
-                "passwordResult"
-            ).textContent =
-                password;
-
-        };
-
-    }
-
-
-    if (id === "notes") {
-
-        renderNotes();
-
-        document.getElementById(
-            "saveNote"
-        ).onclick = () => {
-
-            const text =
-                document.getElementById(
-                    "noteText"
-                ).value.trim();
-
-            if (!text) {
-                showToast("Write a note first");
-                return;
-            }
-
-            notes.unshift({
-                text: text,
-                time: new Date().toLocaleString()
-            });
-
-            localStorage.setItem(
-                "leoCalcNotes",
-                JSON.stringify(notes)
-            );
-
-            document.getElementById(
-                "noteText"
-            ).value = "";
-
-            renderNotes();
-
-            showToast("Note saved");
-
-        };
-
-    }
-
+    URL.revokeObjectURL(url);
 }
 
+function clearAllApplicationData() {
+    if (
+        !confirm(
+            "This will clear all LeoCalc data. Continue?"
+        )
+    ) {
+        return;
+    }
+
+    if (window.LeoCalcBackend) {
+        LeoCalcBackend.clearAllData();
+    } else {
+        localStorage.clear();
+    }
+
+    history = [];
+    favorites = [];
+    notes = [];
+
+    clearCalculator();
+
+    renderHistory();
+    renderFavorites();
+    renderNotes();
+    updateDashboard();
+
+    alert("All data cleared.");
+}
 
 /* =========================================================
-   CLOCK
-========================================================= */
+   DASHBOARD
+   ========================================================= */
 
-let clockTimer = null;
+function updateDashboard() {
+    const calculations =
+        getElement("totalCalculations");
 
-function startClock() {
+    const favoriteCount =
+        getElement("totalFavorites");
 
-    if (clockTimer) {
-        clearInterval(clockTimer);
+    const noteCount =
+        getElement("totalNotes");
+
+    if (
+        window.LeoCalcBackend &&
+        typeof LeoCalcBackend.getDashboardData ===
+        "function"
+    ) {
+        const data =
+            LeoCalcBackend.getDashboardData();
+
+        if (calculations) {
+            calculations.textContent =
+                data.totalCalculations ?? 0;
+        }
+
+        if (favoriteCount) {
+            favoriteCount.textContent =
+                data.totalFavorites ?? 0;
+        }
+
+        if (noteCount) {
+            noteCount.textContent =
+                data.totalNotes ?? 0;
+        }
+
+        return;
     }
 
-    const update = () => {
+    if (calculations) {
+        calculations.textContent =
+            history.length;
+    }
 
-        const clock =
-            document.getElementById(
-                "liveClock"
-            );
+    if (favoriteCount) {
+        favoriteCount.textContent =
+            favorites.length;
+    }
 
-        if (!clock) return;
-
-        const now = new Date();
-
-        clock.textContent =
-            now.toLocaleTimeString();
-
-    };
-
-    update();
-
-    clockTimer =
-        setInterval(update, 1000);
-
+    if (noteCount) {
+        noteCount.textContent =
+            notes.length;
+    }
 }
 
+/* =========================================================
+   TIME / STOPWATCH
+   ========================================================= */
+
+function timeTool() {
+    return `
+        <div class="tool-form">
+
+            <div id="liveClock"
+                 class="live-clock">
+                00:00:00
+            </div>
+
+            <button id="startStopwatch">
+                Start
+            </button>
+
+            <button id="pauseStopwatch">
+                Pause
+            </button>
+
+            <button id="resetStopwatch">
+                Reset
+            </button>
+
+            <div id="stopwatchDisplay"
+                 class="tool-result">
+                00:00:00.000
+            </div>
+
+        </div>
+    `;
+}
+
+function setupTimeTool() {
+    updateLiveClock();
+
+    setInterval(
+        updateLiveClock,
+        1000
+    );
+
+    const start =
+        getElement("startStopwatch");
+
+    const pause =
+        getElement("pauseStopwatch");
+
+    const reset =
+        getElement("resetStopwatch");
+
+    if (start) {
+        start.addEventListener(
+            "click",
+            startStopwatch
+        );
+    }
+
+    if (pause) {
+        pause.addEventListener(
+            "click",
+            pauseStopwatch
+        );
+    }
+
+    if (reset) {
+        reset.addEventListener(
+            "click",
+            resetStopwatch
+        );
+    }
+}
+
+function updateLiveClock() {
+    const clock =
+        getElement("liveClock");
+
+    if (!clock) return;
+
+    clock.textContent =
+        new Date().toLocaleTimeString(
+            "en-IN"
+        );
+}
+
+function startStopwatch() {
+    if (stopwatchInterval) return;
+
+    stopwatchStart =
+        Date.now() - stopwatchElapsed;
+
+    stopwatchInterval =
+        setInterval(
+            updateStopwatch,
+            10
+        );
+}
+
+function pauseStopwatch() {
+    if (!stopwatchInterval) return;
+
+    clearInterval(stopwatchInterval);
+
+    stopwatchInterval = null;
+
+    stopwatchElapsed =
+        Date.now() - stopwatchStart;
+
+    updateStopwatch();
+}
+
+function resetStopwatch() {
+    if (stopwatchInterval) {
+        clearInterval(
+            stopwatchInterval
+        );
+    }
+
+    stopwatchInterval = null;
+    stopwatchStart = 0;
+    stopwatchElapsed = 0;
+
+    updateStopwatch();
+}
+
+function updateStopwatch() {
+    let elapsed =
+        stopwatchElapsed;
+
+    if (stopwatchInterval) {
+        elapsed =
+            Date.now() -
+            stopwatchStart;
+    }
+
+    const hours =
+        Math.floor(
+            elapsed / 3600000
+        );
+
+    const minutes =
+        Math.floor(
+            (elapsed % 3600000) /
+            60000
+        );
+
+    const seconds =
+        Math.floor(
+            (elapsed % 60000) /
+            1000
+        );
+
+    const milliseconds =
+        elapsed % 1000;
+
+    const display =
+        getElement(
+            "stopwatchDisplay"
+        );
+
+    if (!display) return;
+
+    display.textContent =
+        `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+function pad(value) {
+    return String(value).padStart(2, "0");
+}
 
 /* =========================================================
    WEATHER
-========================================================= */
+   ========================================================= */
+
+function weatherTool() {
+    return `
+        <div class="tool-form">
+
+            <button id="getWeather">
+                Get My Weather
+            </button>
+
+            <div id="weatherResult"
+                 class="tool-result">
+                Weather: —
+            </div>
+
+        </div>
+    `;
+}
+
+function setupWeatherTool() {
+    const button =
+        getElement("getWeather");
+
+    if (!button) return;
+
+    button.addEventListener(
+        "click",
+        getWeather
+    );
+}
 
 function getWeather() {
+    const result =
+        getElement("weatherResult");
 
-    const output =
-        document.getElementById(
-            "weatherResult"
-        );
-
-    output.textContent =
-        "Getting your location...";
-
+    if (!result) return;
 
     if (!navigator.geolocation) {
-
-        output.textContent =
+        result.textContent =
             "Geolocation is not supported.";
-
         return;
-
     }
 
+    result.textContent =
+        "Getting location...";
 
     navigator.geolocation.getCurrentPosition(
-
-        async position => {
-
-            const lat =
+        async (position) => {
+            const latitude =
                 position.coords.latitude;
 
-            const lon =
+            const longitude =
                 position.coords.longitude;
 
-            output.textContent =
-                "Getting weather...";
-
-
             try {
-
                 const url =
                     "https://api.open-meteo.com/v1/forecast" +
-                    `?latitude=${lat}` +
-                    `&longitude=${lon}` +
+                    `?latitude=${latitude}` +
+                    `&longitude=${longitude}` +
                     "&current=temperature_2m,relative_humidity_2m,wind_speed_10m";
 
                 const response =
                     await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(
+                        "Weather request failed"
+                    );
+                }
 
                 const data =
                     await response.json();
@@ -2192,467 +3054,193 @@ function getWeather() {
                 const current =
                     data.current;
 
-                output.innerHTML =
-                    `Temperature:
-                     <b>${current.temperature_2m}°C</b><br>
-                     Humidity:
-                     <b>${current.relative_humidity_2m}%</b><br>
-                     Wind:
-                     <b>${current.wind_speed_10m} km/h</b>`;
+                result.innerHTML = `
+                    Temperature:
+                    ${current.temperature_2m}°C<br>
 
-            } catch {
+                    Humidity:
+                    ${current.relative_humidity_2m}%<br>
 
-                output.textContent =
+                    Wind:
+                    ${current.wind_speed_10m} km/h
+                `;
+            } catch (error) {
+                console.error(error);
+
+                result.textContent =
                     "Unable to load weather.";
+            }
+        },
+        () => {
+            result.textContent =
+                "Location permission denied.";
+        }
+    );
+}
 
+/* =========================================================
+   GLOBAL BUTTONS
+   ========================================================= */
+
+function setupGlobalButtons() {
+    document.addEventListener(
+        "keydown",
+        (event) => {
+            if (
+                currentPage !==
+                "calculator"
+            ) {
+                return;
             }
 
-        },
-
-        () => {
-
-            output.textContent =
-                "Location permission was denied.";
-
-        }
-
-    );
-
-}
-
-
-/* =========================================================
-   CONVERTER
-========================================================= */
-
-function updateConverterUnits() {
-
-    const type =
-        document.getElementById(
-            "convertType"
-        ).value;
-
-    const from =
-        document.getElementById(
-            "convertFrom"
-        );
-
-    const to =
-        document.getElementById(
-            "convertTo"
-        );
-
-    let units = [];
-
-    if (type === "length") {
-
-        units = [
-            ["meter", "Meter"],
-            ["kilometer", "Kilometer"],
-            ["centimeter", "Centimeter"],
-            ["foot", "Foot"],
-            ["inch", "Inch"]
-        ];
-
-    } else if (type === "weight") {
-
-        units = [
-            ["kg", "Kilogram"],
-            ["g", "Gram"],
-            ["lb", "Pound"]
-        ];
-
-    } else {
-
-        units = [
-            ["celsius", "Celsius"],
-            ["fahrenheit", "Fahrenheit"],
-            ["kelvin", "Kelvin"]
-        ];
-
-    }
-
-    const html =
-        units.map(
-            unit =>
-                `<option value="${unit[0]}">
-                    ${unit[1]}
-                </option>`
-        ).join("");
-
-    from.innerHTML = html;
-    to.innerHTML = html;
-
-    if (units.length > 1) {
-        to.selectedIndex = 1;
-    }
-
-}
-
-
-function performConversion() {
-
-    const type =
-        document.getElementById(
-            "convertType"
-        ).value;
-
-    const value =
-        Number(
-            document.getElementById(
-                "convertValue"
-            ).value
-        );
-
-    const from =
-        document.getElementById(
-            "convertFrom"
-        ).value;
-
-    const to =
-        document.getElementById(
-            "convertTo"
-        ).value;
-
-    let result;
-
-
-    if (type === "length") {
-
-        const meterValues = {
-            meter: 1,
-            kilometer: 1000,
-            centimeter: 0.01,
-            foot: 0.3048,
-            inch: 0.0254
-        };
-
-        result =
-            value *
-            meterValues[from] /
-            meterValues[to];
-
-    }
-
-
-    else if (type === "weight") {
-
-        const kgValues = {
-            kg: 1,
-            g: 0.001,
-            lb: 0.45359237
-        };
-
-        result =
-            value *
-            kgValues[from] /
-            kgValues[to];
-
-    }
-
-
-    else {
-
-        let celsius;
-
-        if (from === "celsius") {
-            celsius = value;
-        }
-
-        else if (from === "fahrenheit") {
-            celsius =
-                (value - 32) * 5 / 9;
-        }
-
-        else {
-            celsius =
-                value - 273.15;
-        }
-
-
-        if (to === "celsius") {
-            result = celsius;
-        }
-
-        else if (to === "fahrenheit") {
-            result =
-                celsius * 9 / 5 + 32;
-        }
-
-        else {
-            result =
-                celsius + 273.15;
-        }
-
-    }
-
-
-    document.getElementById(
-        "convertResult"
-    ).innerHTML =
-        `<b>${result.toFixed(6)}</b> ${to}`;
-
-}
-
-
-/* =========================================================
-   NOTES
-========================================================= */
-
-function renderNotes() {
-
-    const container =
-        document.getElementById(
-            "notesList"
-        );
-
-    if (!container) return;
-
-    if (!notes.length) {
-
-        container.innerHTML =
-            "No notes saved.";
-
-        return;
-
-    }
-
-    container.innerHTML =
-        notes.map(
-            (note, index) => `
-
-                <div style="
-                    padding:10px 0;
-                    border-bottom:1px solid rgba(255,255,255,.08);
-                ">
-
-                    <b>
-                        ${escapeHtml(note.text)}
-                    </b>
-
-                    <br>
-
-                    <small>
-                        ${escapeHtml(note.time)}
-                    </small>
-
-                    <br>
-
-                    <button
-                        onclick="deleteNote(${index})"
-                        style="
-                            margin-top:7px;
-                            background:transparent;
-                            color:#ff8da8;
-                        ">
-                        Delete
-                    </button>
-
-                </div>
-            `
-        ).join("");
-
-}
-
-
-window.deleteNote = function(index) {
-
-    notes.splice(index, 1);
-
-    localStorage.setItem(
-        "leoCalcNotes",
-        JSON.stringify(notes)
-    );
-
-    renderNotes();
-
-};
-
-
-/* =========================================================
-   SEARCH
-========================================================= */
-
-document
-    .getElementById("searchInput")
-    .addEventListener("input", event => {
-
-        const query =
-            event.target.value
-                .toLowerCase()
-                .trim();
-
-        document
-            .querySelectorAll(
-                "[data-tool-card]"
-            )
-            .forEach(card => {
-
-                const text =
-                    card.textContent
-                        .toLowerCase();
-
-                card.style.display =
-                    !query ||
-                    text.includes(query)
-                        ? ""
-                        : "none";
-
-            });
-
-    });
-
-
-/* =========================================================
-   VOICE SEARCH
-========================================================= */
-
-document
-    .getElementById("voiceBtn")
-    .addEventListener("click", () => {
-
-        const Recognition =
-            window.SpeechRecognition ||
-            window.webkitSpeechRecognition;
-
-        if (!Recognition) {
-
-            showToast(
-                "Voice search not supported"
-            );
-
-            return;
-
-        }
-
-        const recognition =
-            new Recognition();
-
-        recognition.lang = "en-IN";
-
-        recognition.start();
-
-        recognition.onresult =
-            event => {
-
-                document.getElementById(
-                    "searchInput"
-                ).value =
-                    event.results[0][0].transcript;
-
-                document.getElementById(
-                    "searchInput"
-                ).dispatchEvent(
-                    new Event("input")
+            const activeTag =
+                document.activeElement?.tagName;
+
+            if (
+                activeTag === "INPUT" ||
+                activeTag === "TEXTAREA"
+            ) {
+                return;
+            }
+
+            if (
+                /^[0-9+\-*/().]$/.test(
+                    event.key
+                )
+            ) {
+                appendCalculatorValue(
+                    event.key
                 );
+            }
 
-            };
+            if (event.key === "Enter") {
+                calculateExpression();
+            }
 
-    });
+            if (
+                event.key === "Backspace"
+            ) {
+                deleteCalculatorCharacter();
+            }
 
-
-/* =========================================================
-   EXPORT
-========================================================= */
-
-document
-    .getElementById("exportHistory")
-    .addEventListener("click", () => {
-
-        const data =
-            JSON.stringify(
-                history,
-                null,
-                2
-            );
-
-        const blob =
-            new Blob(
-                [data],
-                {
-                    type: "application/json"
-                }
-            );
-
-        const url =
-            URL.createObjectURL(blob);
-
-        const a =
-            document.createElement("a");
-
-        a.href = url;
-        a.download =
-            "LeoCalc-History.json";
-
-        a.click();
-
-        URL.revokeObjectURL(url);
-
-        showToast("History exported");
-
-    });
-
-
-/* =========================================================
-   CLEAR DATA
-========================================================= */
-
-document
-    .getElementById("clearData")
-    .addEventListener("click", () => {
-
-        const ok =
-            confirm(
-                "Clear LeoCalc app data?"
-            );
-
-        if (!ok) return;
-
-        localStorage.removeItem(
-            "leoCalcHistory"
-        );
-
-        localStorage.removeItem(
-            "leoCalcFavorites"
-        );
-
-        localStorage.removeItem(
-            "leoCalcNotes"
-        );
-
-        history = [];
-        favorites = [];
-        notes = [];
-
-        renderHistory();
-        renderHomeTools();
-        renderFavorites();
-
-        showToast(
-            "App data cleared"
-        );
-
-    });
-
+            if (event.key === "Escape") {
+                clearCalculator();
+            }
+        }
+    );
+}
 
 /* =========================================================
    ESCAPE HTML
-========================================================= */
+   ========================================================= */
 
-function escapeHtml(value) {
-
-    return String(value)
+function escapeHTML(value) {
+    return String(value ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-
 }
 
+/* =========================================================
+   DATE FORMAT
+   ========================================================= */
+
+function formatDate(timestamp) {
+    if (!timestamp) {
+        return "No date";
+    }
+
+    let date;
+
+    if (
+        typeof timestamp === "object" &&
+        timestamp.seconds
+    ) {
+        date =
+            new Date(
+                timestamp.seconds * 1000
+            );
+    } else {
+        date =
+            new Date(timestamp);
+    }
+
+    if (Number.isNaN(date.getTime())) {
+        return "No date";
+    }
+
+    return date.toLocaleString(
+        "en-IN",
+        {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }
+    );
+}
 
 /* =========================================================
-   INITIAL DISPLAY
-========================================================= */
+   HAPTIC FEEDBACK
+   ========================================================= */
 
-updateDisplay();
+document.addEventListener(
+    "click",
+    (event) => {
+        const button =
+            event.target.closest(
+                "button"
+            );
+
+        if (!button) return;
+
+        try {
+            const settings =
+                window.LeoCalcBackend
+                    ? LeoCalcBackend.getSettings()
+                    : {};
+
+            if (
+                settings.haptic &&
+                navigator.vibrate
+            ) {
+                navigator.vibrate(10);
+            }
+        } catch (error) {
+            // Ignore vibration errors
+        }
+    }
+);
+
+/* =========================================================
+   GLOBAL ESC KEY
+   ========================================================= */
+
+document.addEventListener(
+    "keydown",
+    (event) => {
+        if (event.key !== "Escape") return;
+
+        closeMenu();
+        closeToolModal();
+    }
+);
+
+/* =========================================================
+   PREVENT FORM SUBMIT RELOAD
+   ========================================================= */
+
+document.addEventListener(
+    "submit",
+    (event) => {
+        event.preventDefault();
+    }
+);
+
+/* =========================================================
+   DEBUG
+   ========================================================= */
+
+console.log(
+    "LeoCalc script.js loaded successfully."
+);
