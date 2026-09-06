@@ -3244,3 +3244,61 @@ document.addEventListener(
 console.log(
     "LeoCalc script.js loaded successfully."
 );
+// ==========================================
+// OPEN CALCULATOR BUTTON
+// ==========================================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const openCalcBtn = document.getElementById("openCalcBtn");
+
+    if (openCalcBtn) {
+        openCalcBtn.addEventListener("click", () => {
+
+            // Hide all pages
+            document.querySelectorAll(".page").forEach(page => {
+                page.classList.remove("active");
+            });
+
+            // Open calculator page
+            const calculatorPage = document.getElementById("engineeringPage");
+
+            if (calculatorPage) {
+                calculatorPage.classList.add("active");
+            }
+
+            // Update bottom navigation
+            document.querySelectorAll(".nav-item").forEach(item => {
+                item.classList.remove("active");
+            });
+
+            const calcNav = document.querySelector(
+                '.nav-item[data-page="engineeringPage"]'
+            );
+
+            if (calcNav) {
+                calcNav.classList.add("active");
+            }
+
+            // Close side menu if open
+            const sideMenu = document.getElementById("sideMenu");
+            const backdrop = document.getElementById("menuBackdrop");
+
+            if (sideMenu) {
+                sideMenu.classList.remove("open");
+            }
+
+            if (backdrop) {
+                backdrop.classList.remove("show");
+            }
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+        });
+    }
+
+});
