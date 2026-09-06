@@ -1082,6 +1082,24 @@
 
 <script src="backend.js"></script>
 <script src="script.js"></script>
+<script>
+window.addEventListener("load", function () {
+    setTimeout(function () {
+        const splash = document.getElementById("splash");
+        const app = document.getElementById("app");
 
+        if (splash) {
+            splash.style.display = "none";
+        }
+
+        if (app) {
+            app.classList.remove("hidden");
+            app.style.display = "block";
+            app.style.visibility = "visible";
+            app.style.opacity = "1";
+        }
+    }, 1800);
+});
+</script>
 </body>
     </html>
